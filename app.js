@@ -384,7 +384,7 @@ const regionalPriceModifiers = {
 // [NEW] 좌표 기반 지역 판별 함수
 function getRegionFromCoordinates(lat, lng) {
     console.log("📍 위치 판별:", { lat, lng });
-    
+
     // 한국 주요 지역 좌표 범위
     // 서울/경기: 37.2~37.7, 126.7~127.3
     if (lat >= 37.2 && lat <= 37.7 && lng >= 126.7 && lng <= 127.3) {
@@ -410,7 +410,7 @@ function getRegionFromCoordinates(lat, lng) {
     if (lat >= 33.0 && lat <= 34.0 && lng >= 126.0 && lng <= 127.0) {
         return regionalPriceModifiers.jeju;
     }
-    
+
     // 기본값 (서울)
     return regionalPriceModifiers.seoul;
 }
@@ -1288,10 +1288,10 @@ function initHarvestRegistration() {
         // [NEW] 지역별 시세 적용
         const basePrice = marketPriceData[cropId] || marketPriceData.strawberry;
         const modifier = regionInfo ? regionInfo.modifier : 1.0;
-        
+
         const adjustedWholesale = Math.round(basePrice.wholesale * modifier);
         const adjustedRetail = Math.round(basePrice.retail * modifier);
-        
+
         const wholesaleRevenue = Math.round(yieldAmount * adjustedWholesale);
         const retailRevenue = Math.round(yieldAmount * adjustedRetail);
 
@@ -1320,7 +1320,7 @@ function initHarvestRegistration() {
         if (revenuePredictions) {
             revenuePredictions.classList.remove('hidden');
             revenuePredictions.style.setProperty('display', 'flex', 'important');
-            
+
             // [NEW] 지역 정보 배너 추가
             let regionBanner = document.getElementById('region-info-banner');
             if (!regionBanner) {
@@ -1340,7 +1340,7 @@ function initHarvestRegistration() {
                 `;
                 revenuePredictions.parentElement.insertBefore(regionBanner, revenuePredictions);
             }
-            
+
             if (regionInfo) {
                 regionBanner.innerHTML = `
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"></path><circle cx="12" cy="10" r="3"></circle></svg>
@@ -1369,22 +1369,22 @@ function initHarvestRegistration() {
         const user = getCurrentUser();
         if (user && user.farmLocation && Array.isArray(user.farmLocation) && user.farmLocation.length === 2) {
             console.log("✅ 등록된 농장 위치 사용:", user.farmLocation);
-            
+
             registerBtn.disabled = true;
             registerBtn.innerHTML = '<i data-lucide="loader"></i> 조회 중...';
             lucide.createIcons();
-            
+
             // Use registered farm location
             const [lat, lng] = user.farmLocation;
             const regionInfo = getRegionFromCoordinates(lat, lng);
             console.log("🌍 농장 주소 기반 지역:", regionInfo, "주소:", user.farmAddress);
-            
+
             // Calculate revenue with region info
             calculateRevenue(regionInfo);
-            
+
             // Silently use registered location
             console.log("✅ 등록된 농장 위치 기반 시세 조회 완료");
-            
+
             // Proceed to map registration (회원가입 주소로 등록)
             if (user.uid || user.email) {
                 proceedToMapRegistration(lat, lng, cropId, yieldAmount, regionInfo);
@@ -1399,7 +1399,7 @@ function initHarvestRegistration() {
         // [NEW] 2. Check Geolocation Support (GPS fallback)
         if (!navigator.geolocation) {
             console.log("⚠️ 브라우저가 위치 정보를 지원하지 않음");
-            
+
             // Use registered farm location or default
             let defaultLat, defaultLng, regionInfo;
             if (user && user.farmLocation && Array.isArray(user.farmLocation)) {
@@ -1412,9 +1412,9 @@ function initHarvestRegistration() {
                 regionInfo = regionalPriceModifiers.seoul;
                 console.log("기본 위치(서울) 사용");
             }
-            
+
             calculateRevenue(regionInfo);
-            
+
             // Register to map
             if (user) {
                 proceedToMapRegistration(defaultLat, defaultLng, cropId, yieldAmount, regionInfo);
@@ -1430,16 +1430,16 @@ function initHarvestRegistration() {
         navigator.geolocation.getCurrentPosition(async (position) => {
             const lat = position.coords.latitude;
             const lng = position.coords.longitude;
-            
+
             console.log("📍 GPS 위치 정보 획득:", { lat, lng });
-            
+
             // [NEW] 지역 판별 및 지역별 시세 계산
             const regionInfo = getRegionFromCoordinates(lat, lng);
             console.log("🌍 GPS 기반 지역 판별:", regionInfo);
-            
+
             // 지역별 시세로 수익 계산
             calculateRevenue(regionInfo);
-            
+
             // Proceed to map registration
             proceedToMapRegistration(lat, lng, cropId, yieldAmount, regionInfo);
 
@@ -1503,11 +1503,11 @@ function initHarvestRegistration() {
 
         }, (error) => {
             console.error("Geolocation Error:", error);
-            
+
             // Use registered farm location or default location
             const user = getCurrentUser();
             let defaultLat, defaultLng, regionInfo;
-            
+
             if (user && user.farmLocation && Array.isArray(user.farmLocation)) {
                 // Use registered farm location as fallback
                 [defaultLat, defaultLng] = user.farmLocation;
@@ -1520,10 +1520,10 @@ function initHarvestRegistration() {
                 regionInfo = regionalPriceModifiers.seoul;
                 console.log("⚠️ GPS 실패, 기본 위치(서울) 사용");
             }
-            
+
             // Calculate revenue with region info
             calculateRevenue(regionInfo);
-            
+
             // Register to map with default location
             if (user) {
                 proceedToMapRegistration(defaultLat, defaultLng, cropId, yieldAmount, regionInfo);
@@ -1689,26 +1689,26 @@ function initMap() {
 // [NEW] Auto Cleanup Expired Farms from Firestore
 async function autoCleanupExpiredFarms() {
     if (typeof db === 'undefined' || !db) return;
-    
+
     try {
         const now = new Date();
         const snapshot = await db.collection('active_farms').get();
-        
+
         let deletedCount = 0;
         const expiredDocs = [];
-        
+
         snapshot.forEach((doc) => {
             const data = doc.data();
             if (data.expiresAt) {
                 const expiry = new Date(data.expiresAt);
-                
+
                 // 만료된 농장 찾기
                 if (expiry <= now) {
                     expiredDocs.push({ id: doc.id, data: data });
                 }
             }
         });
-        
+
         // 만료된 문서 삭제
         for (const item of expiredDocs) {
             try {
@@ -1719,7 +1719,7 @@ async function autoCleanupExpiredFarms() {
                 console.error("삭제 오류:", e);
             }
         }
-        
+
         if (deletedCount > 0) {
             console.log(`✅ ${deletedCount}개의 만료된 농장 정보 삭제 완료`);
         } else {
@@ -1738,14 +1738,14 @@ function startAutoCleanup() {
     if (autoCleanupTimer) {
         clearInterval(autoCleanupTimer);
     }
-    
+
     // 1시간마다 자동 정리
     autoCleanupTimer = setInterval(() => {
         console.log("⏰ 주기적 자동 정리 실행 (1시간마다)");
         autoCleanupExpiredFarms();
         cleanupOldData();
     }, 60 * 60 * 1000); // 1시간 = 60분 * 60초 * 1000ms
-    
+
     console.log("✅ 자동 정리 타이머 시작 (1시간마다)");
 }
 
@@ -1759,15 +1759,15 @@ function stopAutoCleanup() {
 
 function initAdminMap() {
     const mapElement = document.getElementById('google-map');
-    
+
     // [NEW] 관리자 페이지 진입 시 만료된 데이터 자동 정리
     console.log("🧹 만료된 농장 정보 자동 정리 시작...");
     autoCleanupExpiredFarms();
     cleanupOldData(); // localStorage도 정리
-    
+
     // [NEW] 주기적 자동 정리 타이머 시작
     startAutoCleanup();
-    
+
     if (!mapElement) return;
 
     // Check if map already initialized
@@ -1823,10 +1823,10 @@ function initAdminMap() {
     // [New] Load data (Firestore Real-time)
     if (typeof db !== 'undefined' && db) {
         console.log("🌍 Subscribing to active_farms for Admin Map...");
-        
+
         // [NEW] 자동 정리: 만료된 데이터 삭제
         autoCleanupExpiredFarms();
-        
+
         db.collection('active_farms').onSnapshot((snapshot) => {
             // Clear existing markers
             markers.forEach(m => map.removeLayer(m));
@@ -1840,11 +1840,11 @@ function initAdminMap() {
                 const data = doc.data();
                 // Check Expiry (3 days logic)
                 const expiry = new Date(data.expiresAt);
-                
+
                 if (expiry > now) {
                     addFarmMarker(data);
                     validFarms.push(data);
-                    
+
                     // [NEW] 만료 임박 체크 (24시간 이내)
                     const hoursLeft = (expiry - now) / (1000 * 60 * 60);
                     if (hoursLeft < 24) {
@@ -1921,7 +1921,7 @@ function cleanupOldData() {
     });
 
     localStorage.setItem('active_farms', JSON.stringify(validData));
-    
+
     // 구버전 farmData도 정리
     let oldData = JSON.parse(localStorage.getItem('farmData') || '[]');
     if (oldData.length > 0) {
@@ -1932,11 +1932,11 @@ function cleanupOldData() {
         });
         localStorage.setItem('farmData', JSON.stringify(validOldData));
     }
-    
+
     if (deletedCount > 0) {
         console.log(`✅ localStorage 정리 완료: ${deletedCount}개 삭제`);
     }
-    
+
     return validData;
 }
 
@@ -1982,9 +1982,9 @@ function addFarmMarker(farmData) {
         '경상': '#ef4444',       // 빨강
         '제주': '#06b6d4',       // 청록
     };
-    
+
     const markerColor = farmData.region ? (regionColors[farmData.region] || '#10b981') : '#10b981';
-    
+
     // Create CircleMarker (similar to Google Maps circle icon)
     const marker = L.circleMarker([lat, lng], {
         radius: 10,
@@ -2006,7 +2006,7 @@ function addFarmMarker(farmData) {
             </div>
         </div>
     ` : '';
-    
+
     // [NEW] 지역 정보 추가
     const regionInfo = farmData.region ? `
         <p style="margin:4px 0; color:#10b981; font-weight: 600;">
@@ -2014,7 +2014,7 @@ function addFarmMarker(farmData) {
             ${farmData.regionModifier ? `(시세 변동률: ${Math.round(farmData.regionModifier * 100)}%)` : ''}
         </p>
     ` : '';
-    
+
     // [NEW] 만료 정보 계산
     let expiryInfo = '';
     if (farmData.expiresAt) {
@@ -2022,10 +2022,10 @@ function addFarmMarker(farmData) {
         const expiry = new Date(farmData.expiresAt);
         const hoursLeft = Math.floor((expiry - now) / (1000 * 60 * 60));
         const daysLeft = Math.floor(hoursLeft / 24);
-        
+
         let expiryText = '';
         let expiryColor = '#10b981'; // 초록
-        
+
         if (hoursLeft < 0) {
             expiryText = '만료됨';
             expiryColor = '#ef4444'; // 빨강
@@ -2036,14 +2036,14 @@ function addFarmMarker(farmData) {
             expiryText = `${daysLeft}일 후 만료 (${expiry.toLocaleDateString('ko-KR')})`;
             expiryColor = '#10b981'; // 초록
         }
-        
+
         expiryInfo = `
             <p style="margin:6px 0; padding:6px; background:rgba(16, 185, 129, 0.1); border-radius:4px; color:${expiryColor}; font-size:0.85em;">
                 ⏰ <strong>${expiryText}</strong>
             </p>
         `;
     }
-    
+
     // Create popup content (replaces InfoWindow)
     const popupContent = `
         <div class="map-info-window">
@@ -2134,35 +2134,35 @@ function updateFarmList(farmData) {
                 </div>
             </div>
             ${(() => {
-                if (farm.expiresAt) {
-                    const now = new Date();
-                    const expiry = new Date(farm.expiresAt);
-                    const hoursLeft = Math.floor((expiry - now) / (1000 * 60 * 60));
-                    const daysLeft = Math.floor(hoursLeft / 24);
-                    
-                    let expiryText = '';
-                    let bgColor = '';
-                    let textColor = '';
-                    let icon = '';
-                    
-                    if (hoursLeft < 0) {
-                        expiryText = '만료됨';
-                        bgColor = 'linear-gradient(135deg, #ef4444, #dc2626)';
-                        textColor = 'white';
-                        icon = '❌';
-                    } else if (hoursLeft < 24) {
-                        expiryText = `${hoursLeft}시간 후 만료`;
-                        bgColor = 'linear-gradient(135deg, #f59e0b, #d97706)';
-                        textColor = 'white';
-                        icon = '⚠️';
-                    } else {
-                        expiryText = `${daysLeft}일 후 만료`;
-                        bgColor = 'linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(5, 150, 105, 0.15))';
-                        textColor = '#059669';
-                        icon = '✓';
-                    }
-                    
-                    return `
+            if (farm.expiresAt) {
+                const now = new Date();
+                const expiry = new Date(farm.expiresAt);
+                const hoursLeft = Math.floor((expiry - now) / (1000 * 60 * 60));
+                const daysLeft = Math.floor(hoursLeft / 24);
+
+                let expiryText = '';
+                let bgColor = '';
+                let textColor = '';
+                let icon = '';
+
+                if (hoursLeft < 0) {
+                    expiryText = '만료됨';
+                    bgColor = 'linear-gradient(135deg, #ef4444, #dc2626)';
+                    textColor = 'white';
+                    icon = '❌';
+                } else if (hoursLeft < 24) {
+                    expiryText = `${hoursLeft}시간 후 만료`;
+                    bgColor = 'linear-gradient(135deg, #f59e0b, #d97706)';
+                    textColor = 'white';
+                    icon = '⚠️';
+                } else {
+                    expiryText = `${daysLeft}일 후 만료`;
+                    bgColor = 'linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(5, 150, 105, 0.15))';
+                    textColor = '#059669';
+                    icon = '✓';
+                }
+
+                return `
                         <div style="
                             background: ${bgColor}; 
                             color: ${textColor}; 
@@ -2180,9 +2180,9 @@ function updateFarmList(farmData) {
                             <span>⏰ ${expiryText}</span>
                         </div>
                     `;
-                }
-                return '';
-            })()}
+            }
+            return '';
+        })()}
         </div>
     `).join('');
 
@@ -2234,7 +2234,7 @@ function showLocationRequestGuide() {
         <p style="margin: 0; opacity: 0.95;">브라우저 상단의 팝업에서 <strong>"허용"</strong>을 눌러주세요</p>
         <p style="margin: 8px 0 0 0; font-size: 0.85em; opacity: 0.8;">지역별 정확한 시세를 조회하기 위해 필요합니다</p>
     `;
-    
+
     const style = document.createElement('style');
     style.textContent = `
         @keyframes bounce {
@@ -2243,9 +2243,9 @@ function showLocationRequestGuide() {
         }
     `;
     document.head.appendChild(style);
-    
+
     document.body.appendChild(guide);
-    
+
     // Auto remove after 5 seconds
     setTimeout(() => {
         if (document.getElementById('location-guide')) {
@@ -2257,7 +2257,7 @@ function showLocationRequestGuide() {
 // [NEW] Proceed to Map Registration (separated logic)
 async function proceedToMapRegistration(lat, lng, cropId, yieldAmount, regionInfo) {
     const registerBtn = document.getElementById('register-map-btn');
-    
+
     registerBtn.innerHTML = '<i data-lucide="loader"></i> 등록 중...';
     lucide.createIcons();
 
@@ -2268,9 +2268,9 @@ async function proceedToMapRegistration(lat, lng, cropId, yieldAmount, regionInf
         registerBtn.disabled = false;
         registerBtn.innerHTML = '<i data-lucide="search"></i> 시세 조회';
         lucide.createIcons();
-        
+
         console.log("💡 비로그인 사용자 - 시세만 표시");
-        
+
         // 지도 등록 안내
         setTimeout(() => {
             if (confirm("📍 지도에 수확량을 등록하시겠습니까?\n(로그인이 필요합니다)")) {
@@ -2283,7 +2283,7 @@ async function proceedToMapRegistration(lat, lng, cropId, yieldAmount, regionInf
     // Get Contact Info & Farm Address (Session -> Firestore -> LocalStorage Fallback)
     let contactNumber = user.contactNumber;
     let farmAddress = user.farmAddress;
-    
+
     // Try to get from Firestore first
     if (typeof db !== 'undefined' && db && user.uid) {
         try {
@@ -2303,7 +2303,7 @@ async function proceedToMapRegistration(lat, lng, cropId, yieldAmount, regionInf
             console.error("Firestore 사용자 정보 조회 오류:", e);
         }
     }
-    
+
     // Fallback to localStorage
     if (!contactNumber || !farmAddress) {
         try {
@@ -2323,14 +2323,14 @@ async function proceedToMapRegistration(lat, lng, cropId, yieldAmount, regionInf
             console.error("localStorage 사용자 정보 조회 오류:", e);
         }
     }
-    
+
     if (!contactNumber) {
         console.warn("⚠️ 연락처를 찾을 수 없습니다");
     }
     if (!farmAddress) {
         console.warn("⚠️ 농장 주소를 찾을 수 없습니다");
     }
-    
+
     console.log("🔍 최종 사용자 정보:", {
         contactNumber: contactNumber,
         farmAddress: farmAddress,
@@ -2365,7 +2365,7 @@ async function proceedToMapRegistration(lat, lng, cropId, yieldAmount, regionInf
 
         // B. LocalStorage Save (Fallback/Offline)
         let localFarms = JSON.parse(localStorage.getItem('active_farms') || '[]');
-        
+
         // Remove old entry for this user (갱신)
         const existingIndex = localFarms.findIndex(f => f.userId === farmData.userId);
         if (existingIndex !== -1) {
@@ -2375,7 +2375,7 @@ async function proceedToMapRegistration(lat, lng, cropId, yieldAmount, regionInf
             console.log("✨ 새 농장 정보 등록");
             localFarms.push(farmData);
         }
-        
+
         localStorage.setItem('active_farms', JSON.stringify(localFarms));
 
         // [NEW] Success Message with region info (알림창 제거 - 콘솔만)
@@ -2414,7 +2414,7 @@ function showManualRegionSelector(cropId, yieldAmount) {
         justify-content: center;
         animation: fadeIn 0.3s ease-out;
     `;
-    
+
     const modal = document.createElement('div');
     modal.style.cssText = `
         background: linear-gradient(135deg, #1e293b, #334155);
@@ -2425,7 +2425,7 @@ function showManualRegionSelector(cropId, yieldAmount) {
         box-shadow: 0 25px 50px rgba(0,0,0,0.5);
         color: white;
     `;
-    
+
     modal.innerHTML = `
         <h3 style="margin: 0 0 20px 0; font-size: 1.5em; display: flex; align-items: center; gap: 10px;">
             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"></path><circle cx="12" cy="10" r="3"></circle></svg>
@@ -2464,10 +2464,10 @@ function showManualRegionSelector(cropId, yieldAmount) {
             취소
         </button>
     `;
-    
+
     overlay.appendChild(modal);
     document.body.appendChild(overlay);
-    
+
     // Add hover effects
     const style = document.createElement('style');
     style.textContent = `
@@ -2481,7 +2481,7 @@ function showManualRegionSelector(cropId, yieldAmount) {
         }
     `;
     document.head.appendChild(style);
-    
+
     // Event listeners
     modal.querySelectorAll('.region-btn').forEach(btn => {
         btn.addEventListener('click', () => {
@@ -2489,13 +2489,13 @@ function showManualRegionSelector(cropId, yieldAmount) {
             const regionInfo = regionalPriceModifiers[regionKey];
             calculateRevenue(regionInfo);
             overlay.remove();
-            
+
             // 알림창 제거 - 콘솔만
             console.log(`✅ ${regionInfo.name} 지역 시세로 조회되었습니다!`);
             console.log(regionInfo.description);
         });
     });
-    
+
     document.getElementById('cancel-region-select').addEventListener('click', () => {
         overlay.remove();
     });
@@ -3073,20 +3073,6 @@ function initNoticeSystem() {
     // 대시보드 공지사항 로드 및 표시
     loadAndDisplayNotice();
 
-    // [Auto-Sync] If LocalStorage has notice but maybe Firestore is empty (migration)
-    // Runs only if local data exists (Admin context)
-    const localNotice = localStorage.getItem('smartfarm_notice');
-    if (localNotice && typeof db !== 'undefined' && db) {
-        try {
-            const noticeObj = JSON.parse(localNotice);
-            // Optional: Check if remote exists? Or just overwrite/ensure it's there.
-            // We just set it. It's safe because local is the 'master' for the admin.
-            db.collection('settings').doc('notice').set(noticeObj, { merge: true })
-                .then(() => console.log('✅ Auto-synced local notice to Firestore'))
-                .catch(e => console.error('Auto-sync failed:', e));
-        } catch (e) { console.error(e); }
-    }
-
     // 관리자 페이지 이벤트 리스너
     const saveBtn = document.getElementById('save-notice-btn');
     const clearBtn = document.getElementById('clear-notice-btn');
@@ -3303,7 +3289,7 @@ function loadAndDisplayNotice() {
     // [FIX] 우선순위: localStorage 우선 (관리자가 방금 등록한 최신 데이터)
     const localNoticeData = localStorage.getItem('smartfarm_notice');
     let localItems = [];
-    
+
     if (localNoticeData) {
         try {
             const parsed = JSON.parse(localNoticeData);
@@ -3324,15 +3310,15 @@ function loadAndDisplayNotice() {
             if (doc.exists) {
                 const remoteNotice = doc.data();
                 const remoteItems = remoteNotice.items || (remoteNotice.content ? [remoteNotice] : []);
-                
+
                 // [FIX] localStorage와 비교하여 다른 경우에만 업데이트
                 const localJson = JSON.stringify(localItems);
                 const remoteJson = JSON.stringify(remoteItems);
-                
+
                 if (localJson !== remoteJson) {
                     // Firestore 데이터로 localStorage 업데이트
                     localStorage.setItem('smartfarm_notice', JSON.stringify(remoteNotice));
-                    
+
                     // UI 업데이트 (Firestore가 더 최신일 경우)
                     renderNotices(remoteItems);
                     console.log('☁️ Firestore 공지사항으로 업데이트:', remoteItems.length + '개');
@@ -3340,8 +3326,10 @@ function loadAndDisplayNotice() {
                     console.log('✅ localStorage와 Firestore 동기화됨');
                 }
             } else {
-                // Firestore에 공지사항이 없으면 localStorage 유지
-                console.log('☁️ Firestore에 공지사항 없음 (localStorage 유지)');
+                // [FIX] Firestore에 공지사항이 없으면 localStorage도 삭제하고 숨김 (관리자 권한 존중)
+                localStorage.removeItem('smartfarm_notice');
+                noticeEl.classList.add('hidden');
+                console.log('☁️ Firestore에 공지사항 없음 (동기화: 데이터 삭제)');
             }
         }).catch(e => {
             console.error('Firestore 조회 오류:', e);
