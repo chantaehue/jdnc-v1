@@ -2214,6 +2214,20 @@ function initNoticeSystem() {
     // 대시보드 공지사항 로드 및 표시
     loadAndDisplayNotice();
 
+    // [Auto-Sync] If LocalStorage has notice but maybe Firestore is empty (migration)
+    // Runs only if local data exists (Admin context)
+    const localNotice = localStorage.getItem('smartfarm_notice');
+    if (localNotice && typeof db !== 'undefined' && db) {
+        try {
+            const noticeObj = JSON.parse(localNotice);
+            // Optional: Check if remote exists? Or just overwrite/ensure it's there.
+            // We just set it. It's safe because local is the 'master' for the admin.
+            db.collection('settings').doc('notice').set(noticeObj, { merge: true })
+                .then(() => console.log('✅ Auto-synced local notice to Firestore'))
+                .catch(e => console.error('Auto-sync failed:', e));
+        } catch (e) { console.error(e); }
+    }
+
     // 관리자 페이지 이벤트 리스너
     const saveBtn = document.getElementById('save-notice-btn');
     const clearBtn = document.getElementById('clear-notice-btn');
