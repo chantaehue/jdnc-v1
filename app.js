@@ -1167,7 +1167,10 @@ function initHarvestRegistration() {
         retailRevenueEl.textContent = retailRevenue.toLocaleString() + '원';
 
         // Show predictions if hidden
-        if (revenuePredictions) revenuePredictions.style.display = 'flex';
+        if (revenuePredictions) {
+            revenuePredictions.classList.remove('hidden');
+            revenuePredictions.style.display = 'flex'; // Ensure flex layout
+        }
     }
 
     async function registerToMap() {
@@ -1185,8 +1188,11 @@ function initHarvestRegistration() {
         // 2. Get User Info
         const user = getCurrentUser();
         if (!user) {
-            alert("로그인이 필요한 서비스입니다.");
-            window.location.href = 'login.html';
+            // Logged out but still checking price? Allowed.
+            // But Map Registration needs login.
+            if (confirm("지도 등록을 위해서는 로그인이 필요합니다.\n로그인 페이지로 이동하시겠습니까?")) {
+                window.location.href = 'login.html';
+            }
             return;
         }
 
@@ -1197,7 +1203,7 @@ function initHarvestRegistration() {
         }
 
         registerBtn.disabled = true;
-        registerBtn.innerHTML = '<i data-lucide="loader"></i> 등록 중...';
+        registerBtn.innerHTML = '<i data-lucide="loader"></i> 조회 중...';
         lucide.createIcons();
 
         navigator.geolocation.getCurrentPosition(async (position) => {
@@ -1230,31 +1236,30 @@ function initHarvestRegistration() {
                 localFarms.push(farmData);
                 localStorage.setItem('active_farms', JSON.stringify(localFarms));
 
-                alert(`[${getCropName(cropId)}] 수확량 ${yieldAmount}kg이 지도에 등록되었습니다.\n(관리자 모드에서 확인 가능)`);
+                // Success Message
+                // alert(`[${getCropName(cropId)}] 시세 조회 완료 및 지도 등록 성공!`);
 
             } catch (error) {
                 console.error("Map Registration Error:", error);
-                alert("지도 등록 중 오류가 발생했습니다.");
+                // alert("지도 등록 중 오류가 발생했습니다."); // Removed as per instruction
             } finally {
                 registerBtn.disabled = false;
-                registerBtn.innerHTML = '<i data-lucide="map"></i> 지도 등록 및 시세 조회';
+                registerBtn.innerHTML = '<i data-lucide="search"></i> 시세 조회';
                 lucide.createIcons();
             }
 
         }, (error) => {
             console.error("Geolocation Error:", error);
-            alert("위치 정보를 가져올 수 없습니다. 위치 권한을 허용해주세요.");
+            alert("위치 정보를 가져올 수 없어 지도 등록은 생략합니다.\n시세 정보만 표시됩니다.");
             registerBtn.disabled = false;
-            registerBtn.innerHTML = '<i data-lucide="map"></i> 지도 등록 및 시세 조회';
+            registerBtn.innerHTML = '<i data-lucide="search"></i> 시세 조회';
             lucide.createIcons();
         });
     }
 
     // Event listeners
     if (marketCropSelect && yieldAmountInput && registerBtn) {
-        // Auto-calculate on input change (optional, maybe clearer to wait for button?)
-        // Let's invoke calculate on change but not register
-        marketCropSelect.addEventListener('change', calculateRevenue);
+        // Removed auto-calc listeners
 
         // Register Button Click
         registerBtn.addEventListener('click', registerToMap);
