@@ -2253,6 +2253,13 @@ function saveNotice() {
 
     localStorage.setItem('smartfarm_notice', JSON.stringify(notice));
 
+    // [Sync] Save to Firestore
+    if (typeof db !== 'undefined' && db) {
+        db.collection('settings').doc('notice').set(notice)
+            .then(() => console.log('✅ Notice synced to Firestore'))
+            .catch(e => console.error('❌ Notice sync error:', e));
+    }
+
     // 프리뷰 업데이트
     const previewEl = document.getElementById('notice-preview-content');
     if (previewEl) {
@@ -2269,6 +2276,13 @@ function clearNotice() {
     if (!confirm('공지사항을 삭제하시겠습니까?')) return;
 
     localStorage.removeItem('smartfarm_notice');
+
+    // [Sync] Delete from Firestore
+    if (typeof db !== 'undefined' && db) {
+        db.collection('settings').doc('notice').delete()
+            .then(() => console.log('✅ Notice deleted from Firestore'))
+            .catch(e => console.error('❌ Notice delete error:', e));
+    }
 
     // 폼 초기화
     const titleEl = document.getElementById('notice-title');
@@ -2307,6 +2321,31 @@ function loadAndDisplayNotice() {
         }
     } else {
         noticeEl.classList.add('hidden');
+    }
+
+    // [Sync] Fetch from Firestore
+    if (typeof db !== 'undefined' && db) {
+        db.collection('settings').doc('notice').get().then((doc) => {
+            if (doc.exists) {
+                const remoteNotice = doc.data();
+                // Update Local Storage
+                localStorage.setItem('smartfarm_notice', JSON.stringify(remoteNotice));
+
+                // Update UI safely
+                if (titleDisplayEl) titleDisplayEl.textContent = remoteNotice.title || '공지사항';
+                if (bodyEl) bodyEl.textContent = remoteNotice.content;
+                if (noticeEl) noticeEl.classList.remove('hidden');
+                console.log('☁️ Remote notice loaded');
+            } else {
+                // If remote is empty but local exists, maybe we should clear local?
+                // For now, respect local if remote is missing (offline mode priority) or we could clear it.
+                // Let's clear it to ensure consistency if admin deleted it.
+                if (localStorage.getItem('smartfarm_notice')) {
+                    // localStorage.removeItem('smartfarm_notice');
+                    // noticeEl.classList.add('hidden');
+                }
+            }
+        }).catch(e => console.error('Error fetching remote notice:', e));
     }
 }
 
