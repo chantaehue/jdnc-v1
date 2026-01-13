@@ -468,4 +468,19 @@
     .full-width {
         grid-column: 1 !important;
     }
+
+    /* [Mobile] Dashboard Notice - Explicit Visibility */
+    .dashboard-notice {
+        width: 100% !important;
+        box-sizing: border-box !important;
+        display: block;
+        /* Removed !important to allow toggling */
+        margin-bottom: 15px !important;
+        opacity: 1 !important;
+        /* Ensure animation doesn't hide it */
+    }
+
+    .dashboard-notice.hidden {
+        display: none !important;
+    }
 }
