@@ -957,18 +957,35 @@
                 // Wait briefly to allow UI updates, then forcing results
                 setTimeout(() => {
                     try {
-                        // 1. Acquire Integrated Data
-                        const temp = parseFloat(document.getElementById('input-temp').value) || 0;
-                        const hum = parseFloat(document.getElementById('input-hum').value) || 0;
-                        const light = parseFloat(document.getElementById('input-light')?.value) || 0;
-                        const co2 = parseFloat(document.getElementById('input-co2')?.value) || 0;
+                        console.log("📝 입력값 읽기 시작...");
+                        
+                        // 1. Acquire Integrated Data - 안전한 값 읽기
+                        const tempEl = document.getElementById('input-temp');
+                        const humEl = document.getElementById('input-hum');
+                        const lightEl = document.getElementById('input-light');
+                        const co2El = document.getElementById('input-co2');
+                        
+                        const temp = tempEl && tempEl.value ? parseFloat(tempEl.value) : 0;
+                        const hum = humEl && humEl.value ? parseFloat(humEl.value) : 0;
+                        const light = lightEl && lightEl.value ? parseFloat(lightEl.value) : 0;
+                        const co2 = co2El && co2El.value ? parseFloat(co2El.value) : 0;
+                        
+                        console.log("환경 데이터:", { temp, hum, light, co2 });
 
                         // Premium Nutrient Data
-                        const inEC = parseFloat(document.getElementById('input-in-ec')?.value) || 0;
-                        const inPH = parseFloat(document.getElementById('input-in-ph')?.value) || 0;
-                        const rootEC = parseFloat(document.getElementById('input-root-ec')?.value) || 0;
-                        const rootPH = parseFloat(document.getElementById('input-root-ph')?.value) || 0;
-                        const drainEC = parseFloat(document.getElementById('input-drain-ec')?.value) || 0;
+                        const inECEl = document.getElementById('input-in-ec');
+                        const inPHEl = document.getElementById('input-in-ph');
+                        const rootECEl = document.getElementById('input-root-ec');
+                        const rootPHEl = document.getElementById('input-root-ph');
+                        const drainECEl = document.getElementById('input-drain-ec');
+                        
+                        const inEC = inECEl && inECEl.value ? parseFloat(inECEl.value) : 0;
+                        const inPH = inPHEl && inPHEl.value ? parseFloat(inPHEl.value) : 0;
+                        const rootEC = rootECEl && rootECEl.value ? parseFloat(rootECEl.value) : 0;
+                        const rootPH = rootPHEl && rootPHEl.value ? parseFloat(rootPHEl.value) : 0;
+                        const drainEC = drainECEl && drainECEl.value ? parseFloat(drainECEl.value) : 0;
+                        
+                        console.log("양액 데이터:", { inEC, inPH, rootEC, rootPH, drainEC });
 
                         // [Fix] Check Active Mode (Basic vs Premium)
                         const activeNav = document.querySelector('.nav-item.active[data-page="dashboard"]');
@@ -998,10 +1015,18 @@
                         console.log("생육 단계:", stageKey);
 
                         // [FIX] 데이터 검증 - 최소한 온도와 습도는 입력되어야 함
-                        if (temp === 0 || hum === 0) {
-                            alert('⚠️ 최소한 온도와 습도는 입력해주세요!');
+                        if (!temp || temp === 0 || isNaN(temp)) {
+                            alert('⚠️ 온도를 입력해주세요!');
+                            if (tempEl) tempEl.focus();
                             return;
                         }
+                        if (!hum || hum === 0 || isNaN(hum)) {
+                            alert('⚠️ 습도를 입력해주세요!');
+                            if (humEl) humEl.focus();
+                            return;
+                        }
+                        
+                        console.log("✅ 데이터 검증 통과");
 
                         // 2. Scientific Integrated Algorithms
                         // A. VPD Calculation
@@ -1298,11 +1323,12 @@
                             console.log("📢", analysisMsg);
                         } else {
                             console.error("❌ 결과 카드를 찾을 수 없습니다!", { card, list });
-                            // alert('⚠️ 결과 표시 오류가 발생했습니다. 페이지를 새로고침 해주세요.');
+                            alert('⚠️ 결과 표시 오류: 분석 결과 카드를 찾을 수 없습니다.\n페이지를 새로고침 해주세요.');
                         }
                     } catch (e) {
-                        console.error("❌ 분석 중 오류 발생 (사용자 알림 차단됨):", e);
-                        // alert('분석 중 오류가 발생했습니다: ' + e.message);
+                        console.error("❌ 분석 중 오류 발생:", e);
+                        console.error("오류 스택:", e.stack);
+                        alert(`분석 중 오류가 발생했습니다.\n\n오류 내용: ${e.message}\n\n브라우저 콘솔(F12)을 확인하시거나 페이지를 새로고침 해주세요.`);
                     }
                 }, 300);
             });
