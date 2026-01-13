@@ -3265,44 +3265,51 @@ function loadAndDisplayNotice() {
 
     if (!noticeEl || !bodyEl) return;
 
-    const noticeData = localStorage.getItem('smartfarm_notice');
+    // [FIX] Helper function to render notices
+    function renderNotices(items) {
+        if (!items || items.length === 0) {
+            noticeEl.classList.add('hidden');
+            return;
+        }
 
-    if (noticeData) {
-        try {
-            const parsed = JSON.parse(noticeData);
-            let items = parsed.items || (parsed.content ? [parsed] : []);
+        if (titleDisplayEl) titleDisplayEl.textContent = '공지사항';
+        bodyEl.innerHTML = ''; // Clear
 
-            if (items.length > 0) {
-                // Clear and Rebuild
-                if (titleDisplayEl) titleDisplayEl.textContent = '공지사항'; // Fixed Header
-                bodyEl.innerHTML = ''; // Clear prior content
+        items.forEach((item, idx) => {
+            const block = document.createElement('div');
+            block.style.marginBottom = '12px';
 
-                items.forEach((item, idx) => {
-                    const block = document.createElement('div');
-                    block.style.marginBottom = '12px';
+            const h5 = document.createElement('h5');
+            h5.style.cssText = 'margin: 0 0 5px 0; color: var(--accent-color); font-size: 1rem;';
+            h5.textContent = '📢 ' + (item.title || '공지');
+            block.appendChild(h5);
 
-                    const h5 = document.createElement('h5');
-                    h5.style.cssText = 'margin: 0 0 5px 0; color: var(--accent-color); font-size: 1rem;';
-                    h5.textContent = '📢 ' + (item.title || '공지');
-                    block.appendChild(h5);
+            const p = document.createElement('p');
+            p.style.cssText = 'margin: 0; white-space: pre-wrap; line-height: 1.5; color: var(--text-main);';
+            p.textContent = item.content;
+            block.appendChild(p);
 
-                    const p = document.createElement('p');
-                    p.style.cssText = 'margin: 0; white-space: pre-wrap; line-height: 1.5; color: var(--text-main);';
-                    p.textContent = item.content;
-                    block.appendChild(p);
-
-                    if (idx < items.length - 1) {
-                        const hr = document.createElement('hr');
-                        hr.style.cssText = 'border:0; border-top:1px solid rgba(255,255,255,0.1); margin: 10px 0;';
-                        block.appendChild(hr);
-                    }
-                    bodyEl.appendChild(block);
-                });
-
-                noticeEl.classList.remove('hidden');
-            } else {
-                noticeEl.classList.add('hidden');
+            if (idx < items.length - 1) {
+                const hr = document.createElement('hr');
+                hr.style.cssText = 'border:0; border-top:1px solid rgba(255,255,255,0.1); margin: 10px 0;';
+                block.appendChild(hr);
             }
+            bodyEl.appendChild(block);
+        });
+
+        noticeEl.classList.remove('hidden');
+    }
+
+    // [FIX] 우선순위: localStorage 우선 (관리자가 방금 등록한 최신 데이터)
+    const localNoticeData = localStorage.getItem('smartfarm_notice');
+    let localItems = [];
+    
+    if (localNoticeData) {
+        try {
+            const parsed = JSON.parse(localNoticeData);
+            localItems = parsed.items || (parsed.content ? [parsed] : []);
+            renderNotices(localItems);
+            console.log('💾 localStorage 공지사항 표시:', localItems.length + '개');
         } catch (e) {
             console.error('공지사항 파싱 오류:', e);
             noticeEl.classList.add('hidden');
@@ -3311,55 +3318,35 @@ function loadAndDisplayNotice() {
         noticeEl.classList.add('hidden');
     }
 
-    // [Sync] Fetch from Firestore
+    // [Sync] Firestore에서 가져오기 (백그라운드 동기화)
     if (typeof db !== 'undefined' && db) {
         db.collection('settings').doc('notice').get().then((doc) => {
             if (doc.exists) {
                 const remoteNotice = doc.data();
-                // Update Local Storage
-                localStorage.setItem('smartfarm_notice', JSON.stringify(remoteNotice));
-
-                // [FIX] Rebuild UI with items array structure
-                let items = remoteNotice.items || (remoteNotice.content ? [remoteNotice] : []);
+                const remoteItems = remoteNotice.items || (remoteNotice.content ? [remoteNotice] : []);
                 
-                if (items.length > 0) {
-                    if (titleDisplayEl) titleDisplayEl.textContent = '공지사항';
-                    if (bodyEl) {
-                        bodyEl.innerHTML = ''; // Clear
-                        
-                        items.forEach((item, idx) => {
-                            const block = document.createElement('div');
-                            block.style.marginBottom = '12px';
-
-                            const h5 = document.createElement('h5');
-                            h5.style.cssText = 'margin: 0 0 5px 0; color: var(--accent-color); font-size: 1rem;';
-                            h5.textContent = '📢 ' + (item.title || '공지');
-                            block.appendChild(h5);
-
-                            const p = document.createElement('p');
-                            p.style.cssText = 'margin: 0; white-space: pre-wrap; line-height: 1.5; color: var(--text-main);';
-                            p.textContent = item.content;
-                            block.appendChild(p);
-
-                            if (idx < items.length - 1) {
-                                const hr = document.createElement('hr');
-                                hr.style.cssText = 'border:0; border-top:1px solid rgba(255,255,255,0.1); margin: 10px 0;';
-                                block.appendChild(hr);
-                            }
-                            bodyEl.appendChild(block);
-                        });
-                    }
-                    if (noticeEl) noticeEl.classList.remove('hidden');
-                    console.log('☁️ Firestore 공지사항 로드 완료:', items.length + '개');
+                // [FIX] localStorage와 비교하여 다른 경우에만 업데이트
+                const localJson = JSON.stringify(localItems);
+                const remoteJson = JSON.stringify(remoteItems);
+                
+                if (localJson !== remoteJson) {
+                    // Firestore 데이터로 localStorage 업데이트
+                    localStorage.setItem('smartfarm_notice', JSON.stringify(remoteNotice));
+                    
+                    // UI 업데이트 (Firestore가 더 최신일 경우)
+                    renderNotices(remoteItems);
+                    console.log('☁️ Firestore 공지사항으로 업데이트:', remoteItems.length + '개');
                 } else {
-                    if (noticeEl) noticeEl.classList.add('hidden');
+                    console.log('✅ localStorage와 Firestore 동기화됨');
                 }
             } else {
-                // Firestore에 공지사항이 없으면 숨김
-                if (noticeEl) noticeEl.classList.add('hidden');
-                console.log('☁️ Firestore에 공지사항 없음');
+                // Firestore에 공지사항이 없으면 localStorage 유지
+                console.log('☁️ Firestore에 공지사항 없음 (localStorage 유지)');
             }
-        }).catch(e => console.error('Error fetching remote notice:', e));
+        }).catch(e => {
+            console.error('Firestore 조회 오류:', e);
+            // 오류 발생 시 localStorage 데이터 유지
+        });
     }
 }
 
