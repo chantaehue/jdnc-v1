@@ -750,17 +750,18 @@ function initManualEntry() {
                 } else {
                     console.error('analyzeGreenhouseOnly unreachable');
                     // Fallback: define it here if missing (Defensive Coding)
-                    alert('온실 분석 함수가 아직 로드되지 않았습니다. 페이지를 새로고침 해주세요.');
+                    console.warn('온실 분석 함수가 아직 로드되지 않았습니다.');
+                    // alert('온실 분석 함수가 아직 로드되지 않았습니다. 페이지를 새로고침 해주세요.');
                     return;
                 }
             }
 
             console.log('Analysis completed successfully');
-            alert(`[${data.cropName}] 맞춤형 생육 솔루션이 생성되었습니다.\n하단의 리포트 카드를 확인하세요.`);
+            // alert(`[${data.cropName}] 맞춤형 생육 솔루션이 생성되었습니다.\n하단의 리포트 카드를 확인하세요.`);
 
         } catch (error) {
             console.error('Analysis execution error:', error);
-            alert('분석 중 오류가 발생했습니다: ' + error.message);
+            // alert('분석 중 오류가 발생했습니다: ' + error.message);
         }
     });
 }
