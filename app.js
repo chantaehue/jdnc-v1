@@ -1213,10 +1213,23 @@ function initHarvestRegistration() {
             const lat = position.coords.latitude;
             const lng = position.coords.longitude;
 
+            // Get Contact Info (Session -> LocalStorage Fallback)
+            let contactNumber = user.contactNumber;
+            if (!contactNumber) {
+                try {
+                    const localUsers = JSON.parse(localStorage.getItem('users') || '[]');
+                    const matchedUser = localUsers.find(u => u.email === user.email || u.email === user.userId);
+                    if (matchedUser) contactNumber = matchedUser.contactNumber;
+                } catch (e) {
+                    console.error("Error retrieving contact info:", e);
+                }
+            }
+
             const farmData = {
-                userId: user.uid || user.email, // Use email as ID if uid missing (local)
+                userId: user.uid || user.email,
                 userName: user.name || "사용자",
                 farmName: user.farmName || "내 스마트팜",
+                contact: contactNumber || "연락처 미기재",
                 crop: cropId,
                 yield: yieldAmount,
                 location: [lat, lng],
@@ -1572,6 +1585,7 @@ function addFarmMarker(farmData) {
             <p style="margin:4px 0; color:#475569;"><strong>작물:</strong> ${getCropName(farmData.crop)}</p>
             <p style="margin:4px 0; color:#475569;"><strong>수확량:</strong> ${farmData.yield} kg</p>
             <p style="margin:4px 0; color:#475569;"><strong>등록자:</strong> ${farmData.userName}</p>
+            <p style="margin:4px 0; color:#475569;"><strong>연락처:</strong> ${farmData.contact || '미기재'}</p>
             <p style="margin:4px 0; color:#475569;"><strong>등록일:</strong> ${formatDate(farmData.timestamp)}</p>
         </div>
     `;
@@ -1615,6 +1629,11 @@ function updateFarmList(farmData) {
                     <i data-lucide="user"></i>
                     <span class="farm-info-label">등록자:</span>
                     <span class="farm-info-value">${farm.userName}</span>
+                </div>
+                <div class="farm-info-item">
+                    <i data-lucide="phone"></i>
+                    <span class="farm-info-label">연락처:</span>
+                    <span class="farm-info-value">${farm.contact || '미기재'}</span>
                 </div>
             </div>
         </div>

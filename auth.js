@@ -128,6 +128,7 @@ function initLoginForm() {
             name: user.name,
             farmName: user.farmName,
             loginTime: new Date().toISOString(),
+            contactNumber: user.contactNumber, // Include contact info
             rememberMe: rememberMe
         };
 
