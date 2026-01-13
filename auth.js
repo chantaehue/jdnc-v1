@@ -179,16 +179,27 @@ function initSignupForm() {
     signupForm.addEventListener('submit', async (e) => {
         e.preventDefault();
 
-        const name = document.getElementById('name').value.trim();
+        const nameInput = document.getElementById('name').value.trim();
         const email = document.getElementById('email').value.trim();
         const farmName = document.getElementById('farm-name').value.trim();
         const mainCrop = document.getElementById('main-crop').value.trim();
         const farmAddress = document.getElementById('farm-address').value.trim();
-        const contactNumber = document.getElementById('contact-number').value.trim();
         const password = document.getElementById('password').value;
         const confirmPassword = document.getElementById('confirm-password').value;
 
-        if (!name || !email || !password || !confirmPassword || !mainCrop || !farmAddress || !contactNumber) {
+        // [NEW] Parse name and contact from "이름(연락처)" format
+        let name = nameInput;
+        let contactNumber = '';
+        const match = nameInput.match(/^(.+?)\((.+?)\)$/);
+        if (match) {
+            name = nameInput; // 전체 이름 유지 "홍길동(010-1234-5678)"
+            contactNumber = match[2].trim(); // 연락처 추출 "010-1234-5678"
+            console.log("✅ 이름에서 연락처 파싱:", { name, contactNumber });
+        } else {
+            console.warn("⚠️ 연락처가 포함되지 않았습니다. 형식: 이름(연락처)");
+        }
+
+        if (!nameInput || !email || !password || !confirmPassword || !mainCrop || !farmAddress) {
             showError(errorMessage, '필수 항목을 모두 입력해주세요.');
             return;
         }
