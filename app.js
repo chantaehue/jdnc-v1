@@ -892,11 +892,11 @@ function analyzeNutrientSolution(data) {
     }
 
     // --- INTEGRATED GROWTH ANALYSIS (Environment + Nutrient) ---
-    const integratedSolutions = analyzeIntegratedGrowth(data);
-    solutions.push(...integratedSolutions);
+    const integrated = analyzeIntegratedGrowth(data);
+    solutions.push(...integrated.solutions);
 
     // Update UI
-    updateNutrientSolutionUI(solutions, overallStatus, targetEC, targetPH, nutrientCrop, standardName);
+    updateNutrientSolutionUI(solutions, overallStatus, targetEC, targetPH, nutrientCrop, standardName, integrated.metrics);
 }
 
 // Integrated Growth Analysis Algorithm
@@ -953,7 +953,13 @@ function analyzeIntegratedGrowth(data) {
         });
     }
 
-    return solutions;
+    return {
+        solutions: solutions,
+        metrics: {
+            vpd: vpd.toFixed(2),
+            dewPoint: dewPoint.toFixed(1)
+        }
+    };
 }
 
 
@@ -1050,7 +1056,7 @@ function analyzeGreenhouseOnly(data) {
 }
 
 // Update Nutrient Solution UI
-function updateNutrientSolutionUI(solutions, status, targetEC, targetPH, cropId, standardName) {
+function updateNutrientSolutionUI(solutions, status, targetEC, targetPH, cropId, standardName, metrics = null) {
     const solutionCard = document.getElementById('nutrient-solution-card');
     const statusBadge = document.getElementById('nutrient-status-badge');
     const targetInfo = document.getElementById('nutrient-target-info');
@@ -1082,6 +1088,10 @@ function updateNutrientSolutionUI(solutions, status, targetEC, targetPH, cropId,
         };
         statusBadge.textContent = statusText[status] || '분석 완료';
         targetInfo.innerHTML = `<b>${getCropName(cropId)} - ${standardName}</b> 기준값 <br> EC: ${targetEC}dS/m | pH: ${targetPH}`;
+
+        if (metrics) {
+            targetInfo.innerHTML += `<br><span style="color:var(--accent-color); font-size: 0.9em;">VPD: ${metrics.vpd}kPa | 이슬점: ${metrics.dewPoint}°C</span>`;
+        }
     }
 
     // Update solution list
