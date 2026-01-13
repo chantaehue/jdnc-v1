@@ -1339,6 +1339,33 @@ function initAdminMap() {
         zoomControl: true
     });
 
+    // [New] Move map to user's location if available
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+            (position) => {
+                const lat = position.coords.latitude;
+                const lng = position.coords.longitude;
+                console.log(`📍 User Location found: ${lat}, ${lng}`);
+
+                // Move map to user location
+                map.setView([lat, lng], 10);
+
+                // Optional: Add a special marker for "My Location"
+                L.circleMarker([lat, lng], {
+                    radius: 8,
+                    fillColor: "#3b82f6",
+                    color: "#fff",
+                    weight: 2,
+                    opacity: 1,
+                    fillOpacity: 0.8
+                }).addTo(map).bindPopup("현재 접속 위치");
+            },
+            (error) => {
+                console.warn("Geolocation access denied or failed.", error);
+            }
+        );
+    }
+
     // Add dark theme tile layer (CartoDB Dark Matter - Free)
     L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
