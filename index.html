@@ -852,16 +852,13 @@
                     if (mode === 'premium') {
                         // Check if user is logged in (using localStorage from auth.js)
                         const user = JSON.parse(localStorage.getItem('smartfarm_user'));
-                        const isPaidUser = user && (user.role === 'admin' || user.role === 'premium');
-
-                        // If not paid user, block access and explain
-                        if (!isPaidUser) {
-                            e.preventDefault();
-                            alert('🚫 프리미엄 멤버십 전용 기능입니다.\n\n로그인 후 이용하시거나 유료 서비스를 활성화해주세요.');
-                            // Optional: Redirect to login or open modal
-                            // window.location.href = 'login.html'; 
-                            return;
-                        }
+                        // [Unlocked] 유료, 구독 시스템 해제 (누구나 접근 가능)
+                        // const isPaidUser = user && (user.role === 'admin' || user.role === 'premium');
+                        // if (!isPaidUser) {
+                        //     e.preventDefault();
+                        //     alert('🚫 프리미엄 멤버십 전용 기능입니다.\n\n로그인 후 이용하시거나 유료 서비스를 활성화해주세요.');
+                        //     return;
+                        // }
                     }
 
                     // [New] Reset Dashboard View on Menu Click
@@ -974,10 +971,8 @@
 
                 console.log("🔬 분석 시작...");
 
-                // Wait briefly to allow UI updates, then forcing results
-                setTimeout(() => {
-                    try {
-                        console.log("📝 입력값 읽기 시작...");
+                // Wait briefly to allow UI updates, then forcing         setTimeout(() => {
+                                  console.log("📝 입력값 읽기 시작...");
                         
                         // 1. Acquire Integrated Data - 안전한 값 읽기
                         const tempEl = document.getElementById('input-temp');
@@ -999,10 +994,10 @@
                         const rootPHEl = document.getElementById('input-root-ph');
                         const drainECEl = document.getElementById('input-drain-ec');
                         
-                        const inEC = inECEl && inECEl.value ? parseFloat(inECEl.value) : 0;
+                CEl && inECEl.value ? parseFloat(inECEl.value) : 0;
                         const inPH = inPHEl && inPHEl.value ? parseFloat(inPHEl.value) : 0;
                         const rootEC = rootECEl && rootECEl.value ? parseFloat(rootECEl.value) : 0;
-                        const rootPH = rootPHEl && rootPHEl.value ? parseFloat(rootPHEl.value) : 0;
+                        && rootPHEl.value ? parseFloat(rootPHEl.value) : 0;
                         const drainEC = drainECEl && drainECEl.value ? parseFloat(drainECEl.value) : 0;
                         
                         console.log("양액 데이터:", { inEC, inPH, rootEC, rootPH, drainEC });
@@ -1011,14 +1006,12 @@
                         const activeNav = document.querySelector('.nav-item.active[data-page="dashboard"]');
                         const currentMode = activeNav ? activeNav.getAttribute('data-mode') : 'basic';
 
-                        console.log("현재 모드:", currentMode);
+                모드:", currentMode);
 
                         // Force Premium if User is in Premium Dashboard (even if inputs are empty)
                         const isNutrientActive = (currentMode === 'premium') || (inEC > 0 || rootEC > 0);
 
-                        console.log("프리미엄 분석 활성화:", isNutrientActive);
-
-                        // [FIX] 프리미엄 모드에서는 nutrient-crop-select 사용
+                        console.log("프리미엄 분석 활성화:", isNutrientActive);  // [FIX] 프리미엄 모드에서는 nutrient-crop-select 사용
                         let cropSelect = document.getElementById('nutrient-crop-select');
                         if (!cropSelect || currentMode === 'basic') {
                             cropSelect = document.getElementById('select-crop');
@@ -1030,9 +1023,7 @@
 
                         // [New] Get Growth Stage
                         const stageSelect = document.getElementById('nutrient-stage-select');
-                        const stageKey = stageSelect ? stageSelect.value : 'vegetative';
-
-                        console.log("생육 단계:", stageKey);
+                        const stageKey = stageSelect ? stageSelect.value                  console.log("생육 단계:", stageKey);
 
                         // [FIX] 데이터 검증 - 최소한 온도와 습도는 입력되어야 함
                         if (!temp || temp === 0 || isNaN(temp)) {
@@ -1118,7 +1109,7 @@
                                                 🎯 목표 EC: <strong>${targetEC}dS/m</strong>
                                             </span>
                                             <span style="padding: 5px 10px; background: rgba(16, 185, 129, 0.2); border-radius: 4px; border: 1px solid rgba(16, 185, 129, 0.5);">
-                                                🌱 단계 요인: ${stageFactor > 0 ? '+' : ''}${stageFactor}
+                                                 🌱 단계 요인 : ${{stageFactor}
                                             </span>
                                             <span style="padding: 5px 10px; background: rgba(245, 158, 11, 0.2); border-radius: 4px; border: 1px solid rgba(245, 158, 11, 0.5);">
                                                 🌦️ 환경 요인: ${envCompMessage.length > 0 ? envCompMessage.join(', ') : '보정 없음'}
@@ -1185,9 +1176,9 @@
                                     if (inPH > 6.3) {
                                         resultsHTML += `<li style="border-left: 4px solid #f59e0b; padding:12px; margin-bottom:8px; border-radius:4px; background: rgba(245, 158, 11, 0.1);"><strong style="color:#fbbf24;">⚠️ pH 높음 (${inPH})</strong><br>철(Fe), 망간(Mn) 등 미량원소 흡수가 저해될 수 있습니다.<br>📝 조치: pH를 <strong>5.8~6.0</strong>으로 낮추세요 (황산 또는 질산 첨가)</li>`;
                                     } else if (inPH < 5.5) {
-                                        resultsHTML += `<li style="border-left: 4px solid #f59e0b; padding:12px; margin-bottom:8px; border-radius:4px; background: rgba(245, 158, 11, 0.1);"><strong style="color:#fbbf24;">⚠️ pH 낮음 (${inPH})</strong><br>칼슘(Ca), 마그네슘(Mg) 흡수가 저해되고 독성이 발생할 수 있습니다.<br>📝 조치: pH를 <strong>5.8~6.0</strong>으로 높이세요 (수산화칼륨 첨가)</li>`;
+                                        resultsHTML += `<li style="border-left: 4px solid #f59e0b; padding:12px; margin-bottom:8px; border-radius:4px; background: rgba(245, 158, 11, 0.1);"><strong style="color:#fbbf24;">⚠️ pH 낮음 (${inPH})</strong><br>칼슘(Ca), 마그네슘(Mg) 흡수가 저해되고 독성이 발생할 수 있습니다.<b</strong>으로 높이세요 (수산화칼륨 첨가)</li>`;
                                     } else {
-                                        resultsHTML += `<li style="border-left: 4px solid #10b981; padding:12px; margin-bottom:8px; border-radius:4px; background: rgba(16, 185, 129, 0.1);"><strong style="color:#34d399;">✅ pH 적정</strong><br>현재 pH: <strong>${inPH}</strong> (최적 범위 내)</li>`;
+                                        resultsHTML += `<li style="border-left: 4px solid #10b981; padding:12px; margin-bo ttom:8px; border-radius:4p x; b 129, 0.1);"><strong style="color:#34d399;">✅ pH 적정</strong><br>현재 pH: <strong>${inPH}</strong> (최적 범위 내)</li>`;
                                     }
                                 }
 
@@ -1247,15 +1238,14 @@
                             }
                         }
 
-                        // CO2 (if user inputs)
+// CO2 (if user inputs)
                         if (co2 > 0) {
                             if (co2 < 400) {
-                                resultsHTML += `<li style="color:#fbbf24; margin-bottom: 8px; padding: 8px; background: rgba(251, 191, 36, 0.1); border-radius: 6px;">• 🌫️ <strong>CO2 부족 (${co2} ppm)</strong><br>광합성 효율 저하<br>📝 조치: CO2 시비 (1000~1500 ppm 권장)</li>`;
+                                resultsHT#fbbf24; margin-bottom: 8px; padding: 8px; background: rgba(251, 191, 36, 0.1); border-radius: 6px;">• 🌫️ <strong>CO2 부족 (${co2} ppm)</strong><br>광합성 효율 저하<br>📝 조치: CO2 시비 (1000~1500 ppm 권장)</li>`;
                             } else if (co2 > 2000) {
                                 resultsHTML += `<li style="color:#f87171; margin-bottom: 8px; padding: 8px; background: rgba(248, 113, 113, 0.1); border-radius: 6px;">• 🌫️ <strong>CO2 과다 (${co2} ppm)</strong><br>생리장해 위험<br>📝 조치: 환기하여 1500 ppm 이하로 조절</li>`;
                             } else {
-                                resultsHTML += `<li style="color:#86efac; margin-bottom: 8px; padding: 8px; background: rgba(134, 239, 172, 0.1); border-radius: 6px;">• 🌫️ <strong>CO2 적정 (${co2} ppm)</strong><br>광합성 촉진에 유리한 농도입니다.</li>`;
-                            }
+                                resultsHTML += `<li style="color:#86efac; margin-bottom: 8px; padding: 8px; background: rgba(134, 239, 172, 0.1); border-radius: 6px;">• 🌫️ <strong>CO2 적정 (${co2} ppm)</strong><br>광합성                       }
                         }
 
                         console.log("✅ 환경 진단 완료");
@@ -1263,9 +1253,9 @@
                         // Force Render
                         console.log("📊 결과 렌더링 시작...");
 
-                        const card = document.getElementById('nutrient-solution-card');
-                        const list = document.getElementById('nutrient-solution-list');
-                        const targetInfo = document.getElementById('nutrient-target-info');
+                       const card = document.getElementById('nutrient-solution-card');
+                        const list= document.getElementById('nutrient-solution-list');
+                        const targetInfo = document.getEinfo');
                         const badge = document.getElementById('nutrient-status-badge');
 
                         console.log("렌더링 요소 확인:", {
@@ -1314,22 +1304,20 @@
                             // 뱃지 업데이트
                             if (badge) {
                                 badge.textContent = isNutrientActive ? '🔬 AI PREMIUM' : '🌿 BASIC';
-                                badge.className = 'status-badge ' + (isNutrientActive ? 'premium' : 'success');
-                                badge.style.cssText = `
-                                    display: inline-block !important;
-                                    background-color: ${isNutrientActive ? '#4f46e5' : '#10b981'} !important;
-                                    color: white !important;
-                                    padding: 6px 14px;
+                                badge.className = 'statue ? 'premium' : 'success');
+                                                                display: inline-block !important;
+                                   background-color: ${isNutrientActive ? '#4f46e5' : '#10b981'} !important;                                    color: white !important;
+             ng: 6px 14px;
                                     border-radius: 20px;
                                     font-size: 0.85em;
                                     font-weight: 700;
-                                    box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+                                     box-sh adow: 0 4px 8px rgba(0,0,0,0.3);
                                 `;
                             }
 
                             // 스크롤 애니메이션
-                            setTimeout(() => {
-                                card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                           setTimeout(() => {
+                               card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
                             }, 100);
 
                             console.log("✅ 결과 렌더링 완료!");
@@ -1427,11 +1415,11 @@
                 }
 
                 // 3. Upgrade Payment
-                const confirmed = confirm('💎 프리미엄 멤버십 (월 9,900원)\n\n정밀 환경 제어, 양액 통합 분석, RTS 알고리즘 등 모든 고급 기능을 이용하시겠습니까?');
+                const confirmed = confirm('💎 프리미엄 멤버십 (월 9,900원)\n\n정밀 환경 제어, 양액 통합 분석, RTS 알고리즘  고급 기능을 이용하시겠습니까?');
                 if (confirmed) {
                     user.role = 'premium';
                     localStorage.setItem('smartfarm_user', JSON.stringify(user));
-                    localStorage.setItem('auto_redirect_premium', 'true');
+                    localSto('auto_redirect_premium', 'true');
                     alert('결제가 완료되었습니다! 💳\n\n모든 제한이 해제되었습니다.\n[Premium Dashboard]로 이동합니다.');
                     window.location.reload();
                 }
@@ -1718,8 +1706,7 @@
 
                                     // Execute Upgrade
                                     user.role = 'premium';
-                                    localStorage.setItem('smartfarm_user', JSON.stringify(user));
-                                    localStorage.setItem('auto_redirect_premium', 'true');
+                                    localStorage.setItem('smartfarm_user', JSON.strf                                  localStorage.setItem('auto_redirect_premium', 'true');
 
                                     // Redirect
                                     setTimeout(() => {
@@ -1838,7 +1825,7 @@
                                             localStorage.setItem('smartfarm_user', JSON.stringify(user));
                                             localStorage.setItem('auto_redirect_premium', 'true');
 
-                                            // Final Success View
+                                            /niew
                                             document.getElementById('paymentStep2').style.display = 'none';
                                             document.getElementById('paymentStep3').style.display = 'flex';
 
@@ -1876,7 +1863,7 @@
                         console.log("Logout clicked.");
 
                         // 1. Firebase SignOut
-                        if (typeof firebase !== 'undefined' && firebase.auth) {
+                        if (typeof firebase !== 'undefined' i {
                             firebase.auth().signOut().then(() => {
                                 console.log("Firebase signed out successfully.");
                                 clearLocalAndRedirect();
@@ -1989,7 +1976,7 @@
                                                 if (typeof firebase !== 'undefined' && firebase.firestore && user.uid) {
                                                     firebase.firestore().collection('users').doc(user.uid).update({
                                                         role: 'premium'
-                                                    }).then(() => console.log("DB Updated"));
+                                    }).then(() => console.log("DB Updated"));
                                                 }
 
                                                 if (step2) step2.style.display = 'none';
@@ -2019,7 +2006,7 @@
 
                 if (premiumNav && unlockBtn) {
                     console.log("Attaching Premium Nav Auto-Trigger");
-                    premiumNav.addEventListener('click', (e) => {
+            av.addEventListener('click', (e) => {
                         // Check User Role
                         let userStr = localStorage.getItem('currentUser') || sessionStorage.getItem('currentUser');
                         if (userStr) {
@@ -2051,7 +2038,7 @@
                         // Relock Cards
                         document.querySelectorAll('.premium-locked').forEach(el => el.classList.remove('unlocked'));
                         // Reset Form Styles
-                        document.querySelectorAll('.entry-form').forEach(el => el.classList.remove('premium-active'));
+                        document.querySelectorAll('.entry-form').forEac => el.classList.remove('pactive'));
 
                         // Show Banner if user is Basic
                         const premiumBanner = document.getElementById('premium-banner');
