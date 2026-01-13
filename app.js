@@ -2277,8 +2277,10 @@ function initNoticeSystem() {
     }
 
     // 관리자 페이지 진입 시 현재 공지 로드
-    loadNoticeToAdminForm();
+    updateAdminNoticeList();
 }
+
+const MAX_NOTICES = 3;
 
 function saveNotice() {
     const title = document.getElementById('notice-title')?.value?.trim() || '공지사항';
@@ -2289,62 +2291,143 @@ function saveNotice() {
         return;
     }
 
-    // 5줄 제한
-    const lines = content.split('\n').slice(0, 5).join('\n');
+    // Load existing
+    let currentData = { items: [] };
+    const stored = localStorage.getItem('smartfarm_notice');
+    if (stored) {
+        try {
+            const parsed = JSON.parse(stored);
+            if (parsed.items && Array.isArray(parsed.items)) {
+                currentData = parsed;
+            } else if (parsed.content) {
+                // Migrate legacy
+                currentData.items.push(parsed);
+            }
+        } catch (e) { }
+    }
 
-    const notice = {
+    if (currentData.items.length >= MAX_NOTICES) {
+        alert(`공지사항은 최대 ${MAX_NOTICES}개까지만 등록 가능합니다.\n기존 공지를 삭제 후 등록해주세요.`);
+        return;
+    }
+
+    const newNotice = {
         title: title,
-        content: lines,
-        createdAt: new Date().toISOString(),
-        createdBy: JSON.parse(localStorage.getItem('smartfarm_user'))?.name || '관리자'
+        content: content,
+        createdAt: new Date().toISOString()
     };
 
-    localStorage.setItem('smartfarm_notice', JSON.stringify(notice));
+    currentData.items.push(newNotice);
 
-    // [Sync] Save to Firestore
+    // Save
+    localStorage.setItem('smartfarm_notice', JSON.stringify(currentData));
     if (typeof db !== 'undefined' && db) {
-        db.collection('settings').doc('notice').set(notice)
-            .then(() => console.log('✅ Notice synced to Firestore'))
-            .catch(e => console.error('❌ Notice sync error:', e));
+        db.collection('settings').doc('notice').set(currentData)
+            .then(() => console.log('✅ Notices synced'))
+            .catch(e => console.error(e));
     }
 
-    // 프리뷰 업데이트
-    const previewEl = document.getElementById('notice-preview-content');
-    if (previewEl) {
-        previewEl.textContent = `[${notice.title}]\n${notice.content}`;
-    }
-
-    // 대시보드에도 즉시 반영
+    // UI Updates
+    updateAdminNoticeList();
     loadAndDisplayNotice();
 
-    alert('✅ 공지사항이 등록되었습니다!');
+    // Clear Inputs
+    document.getElementById('notice-title').value = '';
+    document.getElementById('notice-content').value = '';
+
+    alert('✅ 공지사항이 추가되었습니다!');
 }
 
+// [New] Render Admin List with Delete Buttons
+function updateAdminNoticeList() {
+    const previewEl = document.getElementById('notice-preview-content');
+    if (!previewEl) return;
+
+    const stored = localStorage.getItem('smartfarm_notice');
+    let items = [];
+    if (stored) {
+        try {
+            const parsed = JSON.parse(stored);
+            items = parsed.items || (parsed.content ? [parsed] : []);
+        } catch (e) { }
+    }
+
+    if (items.length === 0) {
+        previewEl.textContent = '등록된 공지사항이 없습니다.';
+        return;
+    }
+
+    previewEl.innerHTML = '';
+    const list = document.createElement('ul');
+    list.style.listStyle = 'none';
+    list.style.padding = '0';
+
+    items.forEach((item, index) => {
+        const li = document.createElement('li');
+        li.style.marginBottom = '10px';
+        li.style.padding = '8px';
+        li.style.background = 'rgba(255,255,255,0.05)';
+        li.style.borderRadius = '6px';
+        li.style.display = 'flex';
+        li.style.justifyContent = 'space-between';
+        li.style.alignItems = 'center';
+
+        li.innerHTML = `
+            <div>
+                <strong style="color:var(--accent-color)">[${item.title || '공지'}]</strong>
+                <div style="font-size:0.9em; margin-top:4px; white-space:pre-wrap;">${item.content}</div>
+            </div>
+            <button onclick="deleteNoticeItem(${index})" style="background:none; border:none; color:#ef4444; cursor:pointer; padding:4px;">
+                <i data-lucide="trash-2" style="width:16px; height:16px;"></i>
+            </button>
+        `;
+        list.appendChild(li);
+    });
+
+    previewEl.appendChild(list);
+    lucide.createIcons();
+}
+
+// Global scope for onclick
+window.deleteNoticeItem = function (index) {
+    if (!confirm('이 공지사항을 삭제하시겠습니까?')) return;
+
+    const stored = localStorage.getItem('smartfarm_notice');
+    if (!stored) return;
+
+    let data = JSON.parse(stored);
+    let items = data.items || (data.content ? [data] : []);
+
+    items.splice(index, 1);
+
+    // Save back
+    const newData = { items: items };
+    localStorage.setItem('smartfarm_notice', JSON.stringify(newData));
+
+    // Sync
+    if (typeof db !== 'undefined' && db) {
+        db.collection('settings').doc('notice').set(newData).catch(e => console.error(e));
+    }
+
+    updateAdminNoticeList();
+    loadAndDisplayNotice();
+};
+
+
 function clearNotice() {
-    if (!confirm('공지사항을 삭제하시겠습니까?')) return;
+    if (!confirm('모든 공지사항을 삭제하시겠습니까?')) return;
 
     localStorage.removeItem('smartfarm_notice');
 
     // [Sync] Delete from Firestore
     if (typeof db !== 'undefined' && db) {
-        db.collection('settings').doc('notice').delete()
-            .then(() => console.log('✅ Notice deleted from Firestore'))
-            .catch(e => console.error('❌ Notice delete error:', e));
+        db.collection('settings').doc('notice').delete().catch(e => console.error(e));
     }
 
-    // 폼 초기화
-    const titleEl = document.getElementById('notice-title');
-    const contentEl = document.getElementById('notice-content');
-    const previewEl = document.getElementById('notice-preview-content');
+    updateAdminNoticeList();
+    loadAndDisplayNotice(); // Hide it
 
-    if (titleEl) titleEl.value = '';
-    if (contentEl) contentEl.value = '';
-    if (previewEl) previewEl.textContent = '공지사항이 없습니다.';
-
-    // 대시보드에서 숨기기
-    hideNotice();
-
-    alert('공지사항이 삭제되었습니다.');
+    alert('모든 공지사항이 삭제되었습니다.');
 }
 
 function loadAndDisplayNotice() {
@@ -2358,11 +2441,40 @@ function loadAndDisplayNotice() {
 
     if (noticeData) {
         try {
-            const notice = JSON.parse(noticeData);
-            if (titleDisplayEl) titleDisplayEl.textContent = notice.title || '공지사항';
-            bodyEl.textContent = notice.content;
-            noticeEl.classList.remove('hidden');
-            console.log('📢 공지사항 로드 완료');
+            const parsed = JSON.parse(noticeData);
+            let items = parsed.items || (parsed.content ? [parsed] : []);
+
+            if (items.length > 0) {
+                // Clear and Rebuild
+                if (titleDisplayEl) titleDisplayEl.textContent = '공지사항'; // Fixed Header
+                bodyEl.innerHTML = ''; // Clear prior content
+
+                items.forEach((item, idx) => {
+                    const block = document.createElement('div');
+                    block.style.marginBottom = '12px';
+
+                    const h5 = document.createElement('h5');
+                    h5.style.cssText = 'margin: 0 0 5px 0; color: var(--accent-color); font-size: 1rem;';
+                    h5.textContent = '📢 ' + (item.title || '공지');
+                    block.appendChild(h5);
+
+                    const p = document.createElement('p');
+                    p.style.cssText = 'margin: 0; white-space: pre-wrap; line-height: 1.5; color: var(--text-main);';
+                    p.textContent = item.content;
+                    block.appendChild(p);
+
+                    if (idx < items.length - 1) {
+                        const hr = document.createElement('hr');
+                        hr.style.cssText = 'border:0; border-top:1px solid rgba(255,255,255,0.1); margin: 10px 0;';
+                        block.appendChild(hr);
+                    }
+                    bodyEl.appendChild(block);
+                });
+
+                noticeEl.classList.remove('hidden');
+            } else {
+                noticeEl.classList.add('hidden');
+            }
         } catch (e) {
             console.error('공지사항 파싱 오류:', e);
             noticeEl.classList.add('hidden');
