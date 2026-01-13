@@ -228,8 +228,12 @@
     }
 
     #notice-preview-content {
-        max-height: none !important;
-        overflow-y: visible !important;
+        max-height: 200px !important;
+        /* Limit height */
+        overflow-y: auto !important;
+        /* Enable internal scroll */
+        -webkit-overflow-scrolling: touch;
+        /* Smooth scroll on iOS */
     }
 
     /* [Mobile] Main Content Layout Fix */
