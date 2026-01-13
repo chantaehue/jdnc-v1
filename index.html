@@ -951,9 +951,9 @@
 
             form.addEventListener('submit', (e) => {
                 e.preventDefault(); // [FIX] 폼 제출로 인한 페이지 새로고침 방지
-                
+
                 console.log("🔬 분석 시작...");
-                
+
                 // Wait briefly to allow UI updates, then forcing results
                 setTimeout(() => {
                     try {
@@ -973,12 +973,12 @@
                         // [Fix] Check Active Mode (Basic vs Premium)
                         const activeNav = document.querySelector('.nav-item.active[data-page="dashboard"]');
                         const currentMode = activeNav ? activeNav.getAttribute('data-mode') : 'basic';
-                        
+
                         console.log("현재 모드:", currentMode);
 
                         // Force Premium if User is in Premium Dashboard (even if inputs are empty)
                         const isNutrientActive = (currentMode === 'premium') || (inEC > 0 || rootEC > 0);
-                        
+
                         console.log("프리미엄 분석 활성화:", isNutrientActive);
 
                         // [FIX] 프리미엄 모드에서는 nutrient-crop-select 사용
@@ -988,13 +988,13 @@
                         }
                         const cropKey = cropSelect ? cropSelect.value : 'strawberry';
                         const cropInfo = cropDB[cropKey] || cropDB.default;
-                        
+
                         console.log("선택된 작물:", cropInfo.name);
 
                         // [New] Get Growth Stage
                         const stageSelect = document.getElementById('nutrient-stage-select');
                         const stageKey = stageSelect ? stageSelect.value : 'vegetative';
-                        
+
                         console.log("생육 단계:", stageKey);
 
                         // [FIX] 데이터 검증 - 최소한 온도와 습도는 입력되어야 함
@@ -1011,7 +1011,7 @@
                         // B. Dynamic EC Target with Growth Stage Logic
                         // Base EC by Crop (from DB)
                         let baseEC = cropInfo.ecBase || 2.0;
-                        
+
                         console.log("작물별 기본 EC:", baseEC, "작물:", cropInfo.name);
                         let stageFactor = 0;
                         let stageDesc = '';
@@ -1089,8 +1089,8 @@
                         // [Analysis Content]
                         // 1. Nutrient Interaction (Only Premium)
                         if (isNutrientActive) {
-                            console.log("💊 양액 분석 시작...", {inEC, inPH, rootEC, drainEC});
-                            
+                            console.log("💊 양액 분석 시작...", { inEC, inPH, rootEC, drainEC });
+
                             // Check if inputs are strictly empty
                             if (inEC === 0 && rootEC === 0 && drainEC === 0) {
                                 resultsHTML += `
@@ -1153,13 +1153,13 @@
                                     }
                                 }
                             }
-                            
+
                             console.log("✅ 양액 분석 완료");
                         }
 
                         // 2. Environmental Diagnosis (Common)
-                        console.log("🌡️ 환경 진단 시작...", {temp, hum, light, co2, vpd});
-                        
+                        console.log("🌡️ 환경 진단 시작...", { temp, hum, light, co2, vpd });
+
                         resultsHTML += `<div style="margin: 15px 0 10px 0; border-top: 2px solid #374151; padding-top: 15px; color: #e2e8f0; font-size: 1em; font-weight: 600;">🌡️ 온실 환경 진단 (${cropInfo.name} 기준)</div>`;
 
                         // Temperature
@@ -1212,12 +1212,12 @@
                                 resultsHTML += `<li style="color:#86efac; margin-bottom: 8px; padding: 8px; background: rgba(134, 239, 172, 0.1); border-radius: 6px;">• 🌫️ <strong>CO2 적정 (${co2} ppm)</strong><br>광합성 촉진에 유리한 농도입니다.</li>`;
                             }
                         }
-                        
+
                         console.log("✅ 환경 진단 완료");
 
                         // Force Render
                         console.log("📊 결과 렌더링 시작...");
-                        
+
                         const card = document.getElementById('nutrient-solution-card');
                         const list = document.getElementById('nutrient-solution-list');
                         const targetInfo = document.getElementById('nutrient-target-info');
@@ -1233,13 +1233,13 @@
                         if (card && list) {
                             // 숨김 클래스 제거
                             card.classList.remove('hidden');
-                            
+
                             // Dynamic Style based on mode
                             const borderColor = isNutrientActive ? '#6366f1' : '#10b981';
-                            const bgGradient = isNutrientActive 
-                                ? 'linear-gradient(135deg, rgba(30, 27, 75, 0.98), rgba(15, 23, 42, 0.98))' 
+                            const bgGradient = isNutrientActive
+                                ? 'linear-gradient(135deg, rgba(30, 27, 75, 0.98), rgba(15, 23, 42, 0.98))'
                                 : 'linear-gradient(135deg, rgba(15, 23, 42, 0.98), rgba(6, 78, 59, 0.98))';
-                            
+
                             card.style.cssText = `
                                 display: block !important; 
                                 visibility: visible !important; 
@@ -1286,23 +1286,23 @@
                             setTimeout(() => {
                                 card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
                             }, 100);
-                            
+
                             console.log("✅ 결과 렌더링 완료!");
-                            
+
                             // 성공 알림
-                            const analysisMsg = isNutrientActive 
-                                ? `${cropInfo.name} 프리미엄 분석이 완료되었습니다! 🔬` 
+                            const analysisMsg = isNutrientActive
+                                ? `${cropInfo.name} 프리미엄 분석이 완료되었습니다! 🔬`
                                 : `${cropInfo.name} 기본 분석이 완료되었습니다! 🌿`;
-                            
+
                             // 콘솔에만 표시 (사용자 방해 최소화)
                             console.log("📢", analysisMsg);
                         } else {
-                            console.error("❌ 결과 카드를 찾을 수 없습니다!", {card, list});
-                            alert('⚠️ 결과 표시 오류가 발생했습니다. 페이지를 새로고침 해주세요.');
+                            console.error("❌ 결과 카드를 찾을 수 없습니다!", { card, list });
+                            // alert('⚠️ 결과 표시 오류가 발생했습니다. 페이지를 새로고침 해주세요.');
                         }
-                    } catch (e) { 
-                        console.error("❌ 분석 중 오류 발생:", e); 
-                        alert('분석 중 오류가 발생했습니다: ' + e.message);
+                    } catch (e) {
+                        console.error("❌ 분석 중 오류 발생 (사용자 알림 차단됨):", e);
+                        // alert('분석 중 오류가 발생했습니다: ' + e.message);
                     }
                 }, 300);
             });
