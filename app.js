@@ -159,6 +159,24 @@ function initNavigation() {
                 pages.forEach(p => p.classList.remove('active'));
                 targetPage.classList.add('active');
 
+                // [NEW] 대시보드로 전환 시 공지사항 다시 로드
+                if (pageName === 'dashboard') {
+                    if (typeof loadAndDisplayNotice === 'function') {
+                        loadAndDisplayNotice();
+                        console.log('🔔 대시보드 공지사항 새로고침');
+                    }
+                }
+
+                // [NEW] 관리자 페이지로 전환 시 공지사항 목록 갱신
+                if (pageName === 'admin') {
+                    if (typeof updateAdminNoticeList === 'function') {
+                        setTimeout(() => {
+                            updateAdminNoticeList();
+                            console.log('📋 관리자 공지사항 목록 갱신');
+                        }, 100);
+                    }
+                }
+
                 // [Mobile Fix] 페이지 전환 시 스크롤 상단으로 이동
                 window.scrollTo({ top: 0, behavior: 'instant' });
 
@@ -3301,19 +3319,45 @@ function loadAndDisplayNotice() {
                 // Update Local Storage
                 localStorage.setItem('smartfarm_notice', JSON.stringify(remoteNotice));
 
-                // Update UI safely
-                if (titleDisplayEl) titleDisplayEl.textContent = remoteNotice.title || '공지사항';
-                if (bodyEl) bodyEl.textContent = remoteNotice.content;
-                if (noticeEl) noticeEl.classList.remove('hidden');
-                console.log('☁️ Remote notice loaded');
-            } else {
-                // If remote is empty but local exists, maybe we should clear local?
-                // For now, respect local if remote is missing (offline mode priority) or we could clear it.
-                // Let's clear it to ensure consistency if admin deleted it.
-                if (localStorage.getItem('smartfarm_notice')) {
-                    // localStorage.removeItem('smartfarm_notice');
-                    // noticeEl.classList.add('hidden');
+                // [FIX] Rebuild UI with items array structure
+                let items = remoteNotice.items || (remoteNotice.content ? [remoteNotice] : []);
+                
+                if (items.length > 0) {
+                    if (titleDisplayEl) titleDisplayEl.textContent = '공지사항';
+                    if (bodyEl) {
+                        bodyEl.innerHTML = ''; // Clear
+                        
+                        items.forEach((item, idx) => {
+                            const block = document.createElement('div');
+                            block.style.marginBottom = '12px';
+
+                            const h5 = document.createElement('h5');
+                            h5.style.cssText = 'margin: 0 0 5px 0; color: var(--accent-color); font-size: 1rem;';
+                            h5.textContent = '📢 ' + (item.title || '공지');
+                            block.appendChild(h5);
+
+                            const p = document.createElement('p');
+                            p.style.cssText = 'margin: 0; white-space: pre-wrap; line-height: 1.5; color: var(--text-main);';
+                            p.textContent = item.content;
+                            block.appendChild(p);
+
+                            if (idx < items.length - 1) {
+                                const hr = document.createElement('hr');
+                                hr.style.cssText = 'border:0; border-top:1px solid rgba(255,255,255,0.1); margin: 10px 0;';
+                                block.appendChild(hr);
+                            }
+                            bodyEl.appendChild(block);
+                        });
+                    }
+                    if (noticeEl) noticeEl.classList.remove('hidden');
+                    console.log('☁️ Firestore 공지사항 로드 완료:', items.length + '개');
+                } else {
+                    if (noticeEl) noticeEl.classList.add('hidden');
                 }
+            } else {
+                // Firestore에 공지사항이 없으면 숨김
+                if (noticeEl) noticeEl.classList.add('hidden');
+                console.log('☁️ Firestore에 공지사항 없음');
             }
         }).catch(e => console.error('Error fetching remote notice:', e));
     }
