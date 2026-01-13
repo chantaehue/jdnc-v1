@@ -6,20 +6,44 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Setup Auth Listener if Firebase is available
     if (typeof auth !== 'undefined' && auth) {
-        auth.onAuthStateChanged((user) => {
+        auth.onAuthStateChanged(async (user) => {
             if (user) {
                 // User is signed in.
                 console.log("🔥 Firebase User Detected:", user.email);
-                // Sync with LocalStorage for compatibility
-                const probName = user.displayName || user.email.split('@')[0];
-                const sessionData = {
+                
+                // Get additional user data from Firestore
+                let userData = {
                     email: user.email,
-                    name: probName,
+                    name: user.displayName || user.email.split('@')[0],
                     farmName: 'My Cloud Farm',
                     uid: user.uid,
-                    role: 'basic' // Default to basic (Require payment for premium)
+                    role: 'basic'
                 };
-                localStorage.setItem('currentUser', JSON.stringify(sessionData));
+                
+                // Fetch from Firestore
+                if (typeof db !== 'undefined' && db) {
+                    try {
+                        const userDoc = await db.collection('users').doc(user.uid).get();
+                        if (userDoc.exists) {
+                            const firestoreData = userDoc.data();
+                            userData = {
+                                ...userData,
+                                name: firestoreData.name || userData.name,
+                                farmName: firestoreData.farmName || userData.farmName,
+                                farmAddress: firestoreData.farmAddress,
+                                farmLocation: firestoreData.farmLocation,
+                                contactNumber: firestoreData.contactNumber,
+                                mainCrop: firestoreData.mainCrop,
+                                role: firestoreData.role || userData.role
+                            };
+                            console.log("✅ Firestore에서 사용자 정보 로드:", userData);
+                        }
+                    } catch (e) {
+                        console.error("Firestore 사용자 정보 조회 오류:", e);
+                    }
+                }
+                
+                localStorage.setItem('currentUser', JSON.stringify(userData));
 
                 if (currentPage === 'login.html' || currentPage === 'signup.html') {
                     window.location.href = 'index.html';
