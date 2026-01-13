@@ -2527,14 +2527,14 @@ body {
     overflow-y: auto;
 }
 
-/* Analyze Button Style - Refined for Premium Feel */
+/* Analyze Button Style - Simplified to match system theme */
 .analyze-btn {
     width: 100%;
     margin-top: 1.25rem;
     padding: 1rem;
-    background: linear-gradient(135deg, rgba(16, 185, 129, 0.8), rgba(5, 150, 105, 0.9));
+    background: var(--primary-color);
     color: white;
-    border: 1px solid rgba(255, 255, 255, 0.2);
+    border: none;
     border-radius: 12px;
     font-size: 1.05rem;
     font-weight: 700;
@@ -2543,22 +2543,19 @@ body {
     justify-content: center;
     gap: 0.6rem;
     cursor: pointer;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
-    backdrop-filter: blur(4px);
-    letter-spacing: 0.5px;
+    transition: var(--transition);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
 
 .analyze-btn:hover {
+    background: var(--primary-dark);
     transform: translateY(-2px);
-    background: linear-gradient(135deg, rgba(16, 185, 129, 0.95), rgba(5, 150, 105, 1));
-    box-shadow: 0 8px 25px rgba(16, 185, 129, 0.5);
-    border-color: rgba(255, 255, 255, 0.4);
+    box-shadow: 0 8px 12px rgba(0, 0, 0, 0.2);
 }
 
 .analyze-btn:active {
     transform: translateY(1px);
-    box-shadow: 0 2px 10px rgba(16, 185, 129, 0.3);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .analyze-btn i {

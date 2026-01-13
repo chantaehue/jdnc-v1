@@ -1153,9 +1153,11 @@ function initHarvestRegistration() {
         const cropId = marketCropSelect.value;
         const yieldAmount = parseFloat(yieldAmountInput.value) || 0;
 
+        console.log(`Calculating revenue for ${cropId}, amount: ${yieldAmount}`);
+
         if (yieldAmount <= 0) {
-            wholesaleRevenueEl.textContent = '--';
-            retailRevenueEl.textContent = '--';
+            if (wholesaleRevenueEl) wholesaleRevenueEl.textContent = '--';
+            if (retailRevenueEl) retailRevenueEl.textContent = '--';
             return;
         }
 
@@ -1163,13 +1165,14 @@ function initHarvestRegistration() {
         const wholesaleRevenue = Math.round(yieldAmount * prices.wholesale);
         const retailRevenue = Math.round(yieldAmount * prices.retail);
 
-        wholesaleRevenueEl.textContent = wholesaleRevenue.toLocaleString() + '원';
-        retailRevenueEl.textContent = retailRevenue.toLocaleString() + '원';
+        if (wholesaleRevenueEl) wholesaleRevenueEl.textContent = wholesaleRevenue.toLocaleString() + '원';
+        if (retailRevenueEl) retailRevenueEl.textContent = retailRevenue.toLocaleString() + '원';
 
         // Show predictions if hidden
+        // Use timeout to ensure DOM update if needed, but usually immediate
         if (revenuePredictions) {
             revenuePredictions.classList.remove('hidden');
-            revenuePredictions.style.display = 'flex'; // Ensure flex layout
+            revenuePredictions.style.setProperty('display', 'flex', 'important');
         }
     }
 
