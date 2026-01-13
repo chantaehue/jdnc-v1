@@ -1266,20 +1266,22 @@
                             // 뱃지 업데이트
                             if (badge) {
                                 badge.textContent = isNutrientActive ? '🔬 AI PREMIUM' : '🌿 BASIC';
-                                badge.className = 'statue ? 'premium' : 'success');
-                                                                display: inline-block !important;
-                                   background-color: ${isNutrientActive ? '#4f46e5' : '#10b981'} !important;                                    color: white !important;
-             ng: 6px 14px;
+                                badge.className = 'status-badge ' + (isNutrientActive ? 'premium' : 'success');
+                                badge.style.cssText = `
+                                    display: inline-block !important;
+                                    background-color: ${isNutrientActive ? '#4f46e5' : '#10b981'} !important;
+                                    color: white !important;
+                                    padding: 6px 14px;
                                     border-radius: 20px;
                                     font-size: 0.85em;
                                     font-weight: 700;
-                                     box-sh adow: 0 4px 8px rgba(0,0,0,0.3);
+                                    box-shadow: 0 4px 8px rgba(0,0,0,0.3);
                                 `;
                             }
 
                             // 스크롤 애니메이션
-                           setTimeout(() => {
-                               card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                            setTimeout(() => {
+                                card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
                             }, 100);
 
                             console.log("✅ 결과 렌더링 완료!");
