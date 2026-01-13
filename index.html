@@ -1,0 +1,1890 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <script>
+        // [Security] Auth Guard
+        // Check local storage immediately. If no user, redirect to login.
+        (function () {
+            const user = localStorage.getItem('currentUser') || sessionStorage.getItem('currentUser');
+            if (!user) {
+                window.location.replace('login.html');
+            }
+        })();
+    </script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GreenGuard - 통합 온실 모니터링 솔루션</title>
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <!-- Firebase SDK (Compat v9) -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <!-- Leaflet Map (Free Alternative to Google Maps) -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <link rel="stylesheet" href="style.css?v=fix4">
+    <!-- [Critical Fix] Limit mobile.css to mobile devices only -->
+    <link rel="stylesheet" href="mobile.css?v=fix4" media="(max-width: 768px)">
+</head>
+
+<body>
+    <div class="app-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="logo">
+                <i data-lucide="leaf"></i>
+                <span>GreenGuard</span>
+            </div>
+            <nav>
+                <a href="#" class="nav-item active" data-page="dashboard" data-mode="basic"
+                    onclick="openPage('dashboard'); return false;">
+                    <i data-lucide="layout-dashboard"></i>
+                    <span>Basic Dashboard</span>
+                </a>
+                <a href="#" class="nav-item" data-page="dashboard" data-mode="premium"
+                    onclick="openPage('dashboard'); return false;">
+                    <i data-lucide="crown"></i>
+                    <span>Premium Dashboard</span>
+                </a>
+                <a href="#" class="nav-item" data-page="control"
+                    onclick="alert('🚧 원격 제어 시스템 업그레이드 중입니다.'); return false;">
+                    <i data-lucide="toggle-right"></i>
+                    <span>원격 제어</span>
+                </a>
+
+                <a href="#" class="nav-item" data-page="ai-solution" onclick="openPage('ai-solution'); return false;">
+                    <i data-lucide="sparkles"></i>
+                    <span>AI 작물 분석 솔루션</span>
+                </a>
+                <!-- [Security] Admin Only Menu - Hidden by default, shown via JS for admin users -->
+                <a href="#" class="nav-item hidden" data-page="admin" id="admin-nav-item"
+                    onclick="openAdminPage(); return false;">
+                    <i data-lucide="map-pin"></i>
+                    <span>관리자 모드</span>
+                </a>
+            </nav>
+            <div class="sidebar-footer">
+                <div class="user-profile">
+                    <div class="avatar"></div>
+                    <div class="user-info">
+                        <p class="name" id="user-name">사용자</p>
+                        <p class="role" id="user-farm">내 스마트팜</p>
+                        <p id="db-connection-status" style="font-size:0.7em; color:#94a3b8; margin-top:2px;">⚪ Local
+                            Mode</p>
+                    </div>
+                </div>
+                <button class="logout-btn" id="logout-btn" title="로그아웃">
+                    <i data-lucide="log-out"></i>
+                    <span>로그아웃</span>
+                </button>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content" id="main-content-area">
+            <header class="top-bar">
+                <div class="search-bar">
+                    <i data-lucide="search"></i>
+                    <input type="text" placeholder="검색어를 입력하세요...">
+                </div>
+                <div class="top-actions">
+                    <div class="weather-info">
+                        <i data-lucide="sun"></i>
+                        <span>24°C 맑음</span>
+                    </div>
+                    <button class="icon-btn">
+                        <i data-lucide="bell"></i>
+                        <span class="badge"></span>
+                    </button>
+                    <button class="icon-btn">
+                        <i data-lucide="settings"></i>
+                    </button>
+                </div>
+            </header>
+
+            <div id="content-area" class="content-area">
+                <!-- Dashboard Page -->
+                <section id="dashboard-page" class="page active">
+                    <div class="page-header">
+                        <h1>실시간 대시보드</h1>
+                        <p>현재 온실의 상태를 실시간으로 모니터링합니다.</p>
+                    </div>
+
+                    <!-- [NEW] 공지사항 표시 영역 -->
+                    <div id="dashboard-notice" class="dashboard-notice glass hidden">
+                        <div class="notice-header">
+                            <i data-lucide="bell"></i>
+                            <span class="notice-title-display">공지사항</span>
+                            <button class="notice-close-btn" id="close-notice-btn">
+                                <i data-lucide="x"></i>
+                            </button>
+                        </div>
+                        <div class="notice-body" id="notice-body-content">
+                            <!-- 공지 내용이 여기에 표시됩니다 -->
+                        </div>
+                    </div>
+
+                    <div class="grid-container">
+                        <!-- Outdoor Status Card (NEW) -->
+                        <div class="stat-card glass outdoor-card">
+                            <div class="card-header">
+                                <span class="badge-outdoor">EXTERNAL</span>
+                                <h3>외부 환경 (실시간)</h3>
+                            </div>
+                            <div class="outdoor-grid">
+                                <div class="outdoor-item">
+                                    <i data-lucide="thermometer-sun"></i>
+                                    <div class="outdoor-info">
+                                        <p>실외 온도</p>
+                                        <span id="out-temp">--</span>°C
+                                    </div>
+                                </div>
+                                <div class="outdoor-item">
+                                    <i data-lucide="droplets"></i>
+                                    <div class="outdoor-info">
+                                        <p>실외 습도</p>
+                                        <span id="out-hum">--</span>%
+                                    </div>
+                                </div>
+                                <div class="outdoor-item">
+                                    <i data-lucide="wind"></i>
+                                    <div class="outdoor-info">
+                                        <p>풍속</p>
+                                        <span id="out-wind">--</span> km/h
+                                    </div>
+                                </div>
+                                <div class="outdoor-item">
+                                    <i data-lucide="cloud-rain"></i>
+                                    <div class="outdoor-info">
+                                        <p>강수 확률</p>
+                                        <span id="out-rain">--</span>%
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="location-info">
+                                <i data-lucide="map-pin"></i>
+                                <span id="current-location">서울 (기본값)</span>
+                            </div>
+                            <div class="outdoor-actions">
+                                <button class="location-btn" id="get-my-location-btn">
+                                    <i data-lucide="navigation"></i>
+                                    내 위치 날씨
+                                </button>
+                                <button class="data-analysis-btn" id="outdoor-data-analysis-btn">
+                                    <i data-lucide="bar-chart-2"></i>
+                                    데이터 분석
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Manual Data Entry Section (Moved to first position) -->
+                        <div class="manual-entry glass">
+                            <div class="entry-header">
+                                <div>
+                                    <h3>온실 내부 정보 입력</h3>
+                                    <p class="section-desc">현재 온실의 실측 데이터를 직접 입력하여 시스템을 업데이트합니다.</p>
+                                </div>
+                                <div class="crop-selector-group">
+                                    <div class="selector-item">
+                                        <label for="select-crop">대상 작물</label>
+                                        <select id="select-crop">
+                                            <option value="strawberry">딸기</option>
+                                            <option value="tomato">토마토</option>
+                                            <option value="lettuce">상추</option>
+                                            <option value="cucumber">오이</option>
+                                            <option value="paprika">파프리카</option>
+                                            <option value="eggplant">가지</option>
+                                            <option value="leafy">엽채류</option>
+                                            <option value="melon">멜론</option>
+                                        </select>
+                                    </div>
+                                    <div class="selector-item">
+                                        <label for="select-standard">양액 표준 기준</label>
+                                        <select id="select-standard">
+                                            <option value="domestic">국내 표준 (K-Farm)</option>
+                                            <option value="international">국제 표준 (Wageningen)</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                            <form id="manual-data-form" class="entry-form-advanced">
+                                <!-- Group 1: Environment -->
+                                <div class="form-section">
+                                    <h5>환경 정보</h5>
+                                    <div class="section-inputs">
+                                        <div class="input-group">
+                                            <label>대기 온도 (°C)</label>
+                                            <input type="number" id="input-temp" step="0.1" placeholder="25.4">
+                                        </div>
+                                        <div class="input-group">
+                                            <label>습도 (%)</label>
+                                            <input type="number" id="input-hum" step="1" placeholder="60">
+                                        </div>
+                                        <div class="input-group">
+                                            <label>광도 (lux)</label>
+                                            <input type="number" id="input-light" step="100" placeholder="15000">
+                                        </div>
+                                        <div class="input-group">
+                                            <label>CO2 (ppm)</label>
+                                            <input type="number" id="input-co2" step="10" placeholder="400">
+                                        </div>
+                                        <div class="input-group">
+                                            <label>엽온도 (°C)</label>
+                                            <input type="number" id="input-leaf-temp" step="0.1" placeholder="24.3">
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Group 2: Nutrient (Premium) -->
+                                <div class="form-section premium-only hidden">
+                                    <div class="nutrient-header">
+                                        <h5>양액 정보 (공급 / 근권 / 배액)</h5>
+                                        <div class="nutrient-selectors">
+                                            <div class="nutrient-selector-item">
+                                                <label for="nutrient-crop-select">작물</label>
+                                                <select id="nutrient-crop-select">
+                                                    <option value="strawberry">딸기</option>
+                                                    <option value="tomato">토마토</option>
+                                                    <option value="lettuce">상추</option>
+                                                    <option value="cucumber">오이</option>
+                                                    <option value="paprika">파프리카</option>
+                                                    <option value="eggplant">가지</option>
+                                                    <option value="leafy">엽채류</option>
+                                                    <option value="melon">멜론</option>
+                                                </select>
+                                            </div>
+                                            <div class="nutrient-selector-item">
+                                                <label for="nutrient-stage-select">생육 단계</label>
+                                                <select id="nutrient-stage-select">
+                                                    <option value="planting">정식기 (Planting)</option>
+                                                    <option value="vegetative">영양 생장기 (Vegetative)</option>
+                                                    <option value="flowering">개화기 (Flowering)</option>
+                                                    <option value="fruiting">과실 비대기 (Fruiting)</option>
+                                                    <option value="harvest">수확기 (Harvest)</option>
+                                                    <option value="late">수확 후기 (Late)</option>
+                                                </select>
+                                            </div>
+                                            <div class="nutrient-selector-item">
+                                                <label for="nutrient-standard-select">표준</label>
+                                                <select id="nutrient-standard-select">
+                                                    <!-- Dynamic Options -->
+                                                </select>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="section-inputs-nutrient">
+                                        <div class="nutrient-sub-group">
+                                            <p>공급 (In)</p>
+                                            <input type="number" id="input-in-ec" step="0.1" placeholder="EC 1.8">
+                                            <input type="number" id="input-in-ph" step="0.1" placeholder="pH 5.8">
+                                        </div>
+                                        <div class="nutrient-sub-group">
+                                            <p>근권 (Root)</p>
+                                            <input type="number" id="input-root-ec" step="0.1" placeholder="EC 2.2">
+                                            <input type="number" id="input-root-ph" step="0.1" placeholder="pH 6.2">
+                                            <input type="number" id="input-root-temp" step="0.1"
+                                                placeholder="Temp 20.5">
+                                            <input type="number" id="input-root-hum" step="1" placeholder="Hum 70">
+                                        </div>
+                                        <div class="nutrient-sub-group">
+                                            <p>배액 (Drain)</p>
+                                            <input type="number" id="input-drain-ec" step="0.1" placeholder="EC 2.0">
+                                            <input type="number" id="input-drain-ph" step="0.1" placeholder="pH 6.5">
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <button type="submit" class="submit-btn full-width">통합 분석 및 데이터 반영</button>
+                            </form>
+
+                            <!-- Nutrient Solution Results -->
+                            <div id="nutrient-solution-card" class="nutrient-solution-card glass hidden">
+                                <div class="solution-header">
+                                    <h4>양액 분석 결과</h4>
+                                    <div class="solution-status">
+                                        <span class="status-badge" id="nutrient-status-badge">분석 대기</span>
+                                        <span class="target-info" id="nutrient-target-info">목표값을 확인하세요</span>
+                                    </div>
+                                </div>
+                                <ul class="solution-list" id="nutrient-solution-list">
+                                    <li class="no-solution">데이터를 입력하고 분석을 실행하세요.</li>
+                                </ul>
+                            </div>
+
+                            <div id="premium-banner" class="premium-banner mt-4">
+                                <div class="banner-content">
+                                    <i data-lucide="sparkles"></i>
+                                    <div>
+                                        <h4>양액 정밀 분석 서비스 활성화</h4>
+                                        <p>EC, pH 정보를 추가 입력하여 영양 균형 솔루션을 받아보세요.</p>
+                                    </div>
+                                </div>
+                                <button id="unlock-premium-btn" class="unlock-btn">유료 서비스 활성화</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Crop Selection and Yield Input Section -->
+                    <div class="yield-input-section glass full-width">
+                        <div class="yield-header">
+                            <div class="header-left">
+                                <i data-lucide="calculator" class="header-icon"></i>
+                                <div>
+                                    <h3>수확량 입력 및 수입 예측</h3>
+                                    <p class="section-desc">작물과 예상 수확량을 입력하면 실시간 시세 기반 예상 수입을 계산합니다.</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="yield-input-container">
+                            <div class="yield-input-group">
+                                <label for="market-crop-select">
+                                    <i data-lucide="sprout"></i>
+                                    작물 선택
+                                </label>
+                                <select id="market-crop-select" class="yield-select">
+                                    <option value="strawberry">딸기</option>
+                                    <option value="tomato">토마토</option>
+                                    <option value="lettuce">상추</option>
+                                    <option value="cucumber">오이</option>
+                                    <option value="paprika">파프리카</option>
+                                    <option value="eggplant">가지</option>
+                                    <option value="leafy">엽채류</option>
+                                    <option value="melon">멜론</option>
+                                </select>
+                            </div>
+
+                            <div class="yield-input-group">
+                                <label for="yield-amount">
+                                    <i data-lucide="package"></i>
+                                    예상 수확량
+                                </label>
+                                <div class="input-with-unit">
+                                    <input type="number" id="yield-amount" placeholder="100" min="0" step="1">
+                                    <span class="unit">kg</span>
+                                </div>
+                            </div>
+
+                            <div class="revenue-predictions">
+                                <div class="revenue-card wholesale-revenue">
+                                    <div class="revenue-label">
+                                        <i data-lucide="store"></i>
+                                        도매 예상 수입
+                                    </div>
+                                    <div class="revenue-value" id="wholesale-revenue">--</div>
+                                </div>
+                                <div class="revenue-card retail-revenue">
+                                    <div class="revenue-label">
+                                        <i data-lucide="shopping-cart"></i>
+                                        소매 예상 수입
+                                    </div>
+                                    <div class="revenue-value" id="retail-revenue">--</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Market Price Analysis Section [NEW] -->
+                    <div class="market-section glass full-width">
+                        <div class="section-header">
+                            <div class="header-left">
+                                <i data-lucide="trending-up" class="header-icon"></i>
+                                <div>
+                                    <h3>실시간 시장 시세 분석</h3>
+                                    <p class="section-desc">현재 작물의 도/소매 가격 동향 및 기간별 시세 추이를 확인합니다.</p>
+                                </div>
+                            </div>
+                            <div class="market-controls">
+                                <div class="period-tabs">
+                                    <button class="active" data-period="week">1주일</button>
+                                    <button data-period="month">1개월</button>
+                                    <button data-period="year">1년</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="market-grid">
+                            <div class="price-cards">
+                                <div class="price-card wholesale">
+                                    <div class="pc-header">가락시장 (도매)</div>
+                                    <div class="pc-body">
+                                        <div class="price-item">
+                                            <span>최고가</span>
+                                            <b id="wholesale-max">--</b>
+                                        </div>
+                                        <div class="price-item main">
+                                            <span>평균가</span>
+                                            <b id="wholesale-avg">--</b>
+                                        </div>
+                                        <div class="price-item">
+                                            <span>최저가</span>
+                                            <b id="wholesale-min">--</b>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="price-card retail">
+                                    <div class="pc-header">네이버 스마트스토어 (소매)</div>
+                                    <div class="pc-body">
+                                        <div class="price-item">
+                                            <span>최고가</span>
+                                            <b id="retail-max">--</b>
+                                        </div>
+                                        <div class="price-item main">
+                                            <span>평균가</span>
+                                            <b id="retail-avg">--</b>
+                                        </div>
+                                        <div class="price-item">
+                                            <span>최저가</span>
+                                            <b id="retail-min">--</b>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="market-chart-container">
+                                <canvas id="marketChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Main Chart Area (External Environment Data) -->
+                    <div class="chart-container glass hidden" id="outdoor-chart-container">
+                        <div class="chart-header">
+                            <h3>외부 환경 데이터 분석 (온도 및 습도 추이)</h3>
+                            <div class="chart-actions">
+                                <button class="active">24시간</button>
+                                <button>7일</button>
+                                <button>30일</button>
+                            </div>
+                        </div>
+                        <canvas id="mainChart"></canvas>
+                    </div>
+
+                    <!-- Right Panel: Remote Controls Quick View -->
+                    <div class="quick-control glass">
+                        <h3>간편 제어</h3>
+                        <div class="control-list">
+                            <div class="control-item">
+                                <div class="info">
+                                    <i data-lucide="fan"></i>
+                                    <span>환기팬</span>
+                                </div>
+                                <label class="switch">
+                                    <input type="checkbox" checked>
+                                    <span class="slider round"></span>
+                                </label>
+                            </div>
+                            <div class="control-item">
+                                <div class="info">
+                                    <i data-lucide="droplet"></i>
+                                    <span>자동 관수</span>
+                                </div>
+                                <label class="switch">
+                                    <input type="checkbox">
+                                    <span class="slider round"></span>
+                                </label>
+                            </div>
+                            <div class="control-item">
+                                <div class="info">
+                                    <i data-lucide="lightbulb"></i>
+                                    <span>식물 성장등</span>
+                                </div>
+                                <label class="switch">
+                                    <input type="checkbox" checked>
+                                    <span class="slider round"></span>
+                                </label>
+                            </div>
+                        </div>
+                        <button class="primary-btn mt-4 show-control-page">모든 제어 보기</button>
+                    </div>
+
+            </div>
+    </div>
+    </section>
+
+    <!-- AI Solution Page (Hidden by default) -->
+    <section id="ai-solution-page" class="page">
+        <div class="page-header">
+            <h1>AI 작물 분석 솔루션</h1>
+            <p>딥러닝 Vision AI가 작물 이미지를 분석하여 병해충 진단 및 처방을 제공합니다.</p>
+        </div>
+
+        <div class="ai-grid">
+            <!-- [New] AI Image Diagnosis Section -->
+            <div class="glass ai-diagnosis-container" style="grid-column: 1 / -1;">
+                <div class="diagnosis-header">
+                    <h2>📸 AI 병해충 이미지 진단</h2>
+                    <span class="badge premium">PREMIUM</span>
+                </div>
+
+                <div class="upload-area" id="drop-zone">
+                    <input type="file" id="crop-image-input" accept="image/*" hidden>
+                    <div class="upload-placeholder" id="upload-placeholder">
+                        <i data-lucide="camera" style="font-size: 48px; color: #10b981; margin-bottom: 15px;"></i>
+                        <p>터치하여 사진을 촬영하거나<br>갤러리에서 선택하세요</p>
+                        <button class="upload-btn">사진 업로드</button>
+                    </div>
+                    <div class="image-preview hidden" id="image-preview-area">
+                        <img id="preview-img" src="" alt="Crop Preview">
+                        <button class="remove-img-btn" id="remove-img-btn"><i data-lucide="x"></i></button>
+                    </div>
+                </div>
+
+                <div class="analysis-controls hidden" id="analysis-controls">
+                    <div class="crop-type-select">
+                        <label>작물 종류 (자동 감지됨)</label>
+                        <select id="diagnosis-crop-type">
+                            <option value="strawberry">딸기</option>
+                            <option value="tomato">토마토</option>
+                            <option value="paprika">파프리카</option>
+                            <option value="cucumber">오이</option>
+                            <option value="lettuce">상추</option>
+                        </select>
+                    </div>
+                    <button class="primary-btn full-width" id="start-analysis-btn">
+                        <i data-lucide="scan-line"></i> AI 정밀 진단 시작
+                    </button>
+                </div>
+
+                <!-- Analysis Loading -->
+                <div class="analysis-loading hidden" id="analysis-loading">
+                    <div class="scanner-animation"></div>
+                    <p id="loading-text">이미지 분석 중...</p>
+                    <div class="progress-bar-container">
+                        <div class="progress-bar" id="analysis-progress" style="width: 0%"></div>
+                    </div>
+                </div>
+
+                <!-- Analysis Result -->
+                <div class="analysis-result hidden" id="analysis-result">
+                    <div class="result-header">
+                        <div class="diagnosis-score">
+                            <span class="label">진단 결과</span>
+                            <h3 id="result-title">흰가루병 (Powdery Mildew)</h3>
+                        </div>
+                        <div class="confidence-badge" id="result-confidence">
+                            정확도 98.2%
+                        </div>
+                    </div>
+
+                    <div class="result-details">
+                        <div class="detail-item">
+                            <span class="icon">🔍</span>
+                            <div class="info">
+                                <strong>증상 (Symptom)</strong>
+                                <p id="result-symptom">잎 표면에 밀가루를 뿌린 듯한 백색 반점이 발생하며 광합성을 저해합니다.</p>
+                            </div>
+                        </div>
+                        <div class="detail-item danger">
+                            <span class="icon">🚨</span>
+                            <div class="info">
+                                <strong>위험도 (Severity)</strong>
+                                <p id="result-severity">심각 (조기 방제 필요)</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="solution-box">
+                        <h4>💡 AI 추천 해결 방안 (공공데이터 연동)</h4>
+                        <ul class="solution-steps" id="result-solutions">
+                            <!-- Dynamic Content -->
+                        </ul>
+                        <div class="chemical-recommendation">
+                            <strong>💊 추천 약제 (농촌진흥청 기준)</strong>
+                            <p id="result-chemicals">적용 약제: 폴리옥신비, 페나리몰 유제</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Existing Content (Moved down) -->
+            <div class="glass ai-card">
+                <div class="ai-status healthy">
+                    <i data-lucide="check-circle-2"></i>
+                    <span>환경 제어 상태: 아주 좋음</span>
+                </div>
+                <h2>오늘의 환경 제어 권장 사항</h2>
+                <ul class="recommendation-list">
+                    <li><i data-lucide="sun"></i> 오후 2시경 일사량 증가가 예상되므로 차광막을 30% 가동하십시오.</li>
+                    <li><i data-lucide="droplet"></i> 토양 수분 데이터 분석 결과, 내일 오전 8시에 관수가 필요합니다.</li>
+                    <li><i data-lucide="zap"></i> 에너지 소비 효율을 위해 야간 조명 밝기를 20% 낮추는 것을 제안합니다.</li>
+                </ul>
+            </div>
+            <div class="glass ai-analysis">
+                <h3>예상 수확시기 분석</h3>
+                <div class="prediction-value">D-12 <span>(2026.01.23)</span></div>
+                <p>현재 성장 속도는 평년 대비 5% 빠릅니다.</p>
+                <div class="progress-bar-container">
+                    <div class="progress-bar" style="width: 85%;"></div>
+                </div>
+                <span class="progress-text">현재 성장도: 85%</span>
+            </div>
+        </div>
+    </section>
+
+    <!-- Admin Page (Hidden by default) -->
+    <section id="admin-page" class="page">
+        <div class="page-header">
+            <h1>관리자 모드</h1>
+            <p>전체 농장의 수확량 정보를 지도에서 확인하세요</p>
+        </div>
+
+        <div class="admin-content">
+            <div class="map-container glass">
+                <div class="map-header">
+                    <h3>농장 위치 지도</h3>
+                    <div class="map-legend">
+                        <span class="legend-item">
+                            <span class="legend-dot active"></span>
+                            최근 등록 (3일 이내)
+                        </span>
+                    </div>
+                </div>
+                <div id="google-map"></div>
+            </div>
+
+            <div class="farm-list glass">
+                <h3>등록된 농장 목록</h3>
+                <div id="farm-cards-container">
+                    <p class="no-data">등록된 농장이 없습니다.</p>
+                </div>
+            </div>
+
+            <!-- [NEW] 공지사항 작성 섹션 -->
+            <div class="notice-admin glass">
+                <h3><i data-lucide="megaphone"></i> 공지사항 관리</h3>
+                <div class="notice-form">
+                    <input type="text" id="notice-title" placeholder="공지사항 제목" maxlength="50">
+                    <textarea id="notice-content" placeholder="공지사항 내용을 입력하세요 (최대 5줄)" rows="5"
+                        maxlength="500"></textarea>
+                    <div class="notice-actions">
+                        <button class="notice-save-btn" id="save-notice-btn">
+                            <i data-lucide="save"></i> 공지 등록
+                        </button>
+                        <button class="notice-clear-btn" id="clear-notice-btn">
+                            <i data-lucide="trash-2"></i> 공지 삭제
+                        </button>
+                    </div>
+                </div>
+                <div class="notice-preview">
+                    <p class="preview-label">현재 등록된 공지:</p>
+                    <div id="notice-preview-content">공지사항이 없습니다.</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <style>
+        .page {
+            display: none;
+            animation: fadeIn 0.5s ease;
+        }
+
+        .page.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .ai-grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 1.5rem;
+            margin-top: 2rem;
+        }
+
+        .ai-card h2 {
+            margin: 1.5rem 0 1rem;
+            font-size: 1.25rem;
+        }
+
+        .recommendation-list {
+            list-style: none;
+        }
+
+        .recommendation-list li {
+            display: flex;
+            gap: 1rem;
+            align-items: start;
+            padding: 1rem;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 12px;
+            margin-bottom: 0.75rem;
+            font-size: 0.95rem;
+        }
+
+        .ai-status {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-weight: 600;
+            padding: 0.5rem 1rem;
+            border-radius: 30px;
+            width: fit-content;
+        }
+
+        .ai-status.healthy {
+            background: rgba(16, 185, 129, 0.2);
+            color: var(--primary-color);
+        }
+
+        .ai-status.warning {
+            background: rgba(245, 158, 11, 0.2);
+            color: var(--accent-color);
+        }
+
+        .ai-status.danger {
+            background: rgba(239, 68, 68, 0.2);
+            color: #ef4444;
+        }
+
+        .ai-analysis h3 {
+            margin-bottom: 1rem;
+            color: var(--text-muted);
+        }
+
+        .prediction-value {
+            font-size: 2.5rem;
+            font-weight: 800;
+            color: var(--accent-color);
+            margin-bottom: 0.5rem;
+        }
+
+        .progress-bar-container {
+            background: rgba(255, 255, 255, 0.1);
+            height: 12px;
+            border-radius: 6px;
+            margin: 1.5rem 0 0.5rem;
+            overflow: hidden;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, var(--primary-color), var(--accent-color));
+            width: 0;
+            transition: width 1s ease;
+        }
+
+        .progress-text {
+            font-size: 0.875rem;
+            color: var(--text-muted);
+        }
+    </style>
+    </div>
+    </main>
+    </div>
+    <script src="firebase_config.js?v=fix3"></script>
+    <script src="auth.js?v=fix3"></script>
+    <script src="app.js?v=fix3"></script>
+    <script>
+        // Start Lucide
+        lucide.createIcons();
+
+        // [AUTO LOGIN] Enforce Premium Login as per User Request
+        // 이 코드는 사용자의 '프리미엄 로그인' 요청을 처리하기 위해 추가되었습니다.
+        if (!localStorage.getItem('smartfarm_user') || JSON.parse(localStorage.getItem('smartfarm_user')).role !== 'premium') {
+            const premiumUser = {
+                id: 'premium_vip',
+                name: 'VIP 농부',
+                role: 'premium',
+                farmName: '골드 클래스 농장'
+            };
+            localStorage.setItem('smartfarm_user', JSON.stringify(premiumUser));
+            console.log('✅ 프리미엄 계정으로 자동 로그인 설정됨');
+        }
+
+        // [System] Guaranteed Analysis Engine (Embedded)
+        document.addEventListener('DOMContentLoaded', () => {
+            // [New] Dashboard Mode Switcher (Basic vs Premium)
+            const navItems = document.querySelectorAll('.nav-item[data-page="dashboard"]');
+            const premiumSection = document.querySelector('.premium-only');
+            const mainTitle = document.querySelector('.monitor-header h2');
+            const formTitle = document.querySelector('.form-section h5');
+
+            navItems.forEach(item => {
+                item.addEventListener('click', (e) => {
+                    // Check Mode
+                    const mode = item.getAttribute('data-mode');
+
+                    // [New] Premium Access Control
+                    if (mode === 'premium') {
+                        // Check if user is logged in (using localStorage from auth.js)
+                        const user = JSON.parse(localStorage.getItem('smartfarm_user'));
+                        const isPaidUser = user && (user.role === 'admin' || user.role === 'premium');
+
+                        // If not paid user, block access and explain
+                        if (!isPaidUser) {
+                            e.preventDefault();
+                            alert('🚫 프리미엄 멤버십 전용 기능입니다.\n\n로그인 후 이용하시거나 유료 서비스를 활성화해주세요.');
+                            // Optional: Redirect to login or open modal
+                            // window.location.href = 'login.html'; 
+                            return;
+                        }
+                    }
+
+                    // [New] Reset Dashboard View on Menu Click
+                    // 메뉴 이동 시 분석 결과를 초기화하여 '기본 화면' 상태로 리셋
+                    const solutionList = document.querySelector('.solution-card-list');
+                    const nutrientInfo = document.querySelector('.nutrient-target-info');
+                    const nutrientBadge = document.querySelector('.nutrient-status-badge');
+
+                    if (solutionList) {
+                        solutionList.innerHTML = `
+                            <li style="color: #94a3b8; text-align: center; padding: 30px 10px; font-size: 0.95em;">
+                                <div style="margin-bottom: 10px; font-size: 2em; opacity: 0.5;">📊</div>
+                                데이터를 입력하고 
+                                <span style="color:#10b981; font-weight:bold;">[통합 분석 및 데이터 반영]</span> 
+                                버튼을 눌러주세요.
+                            </li>
+                        `;
+                    }
+                    if (nutrientInfo) nutrientInfo.innerHTML = '';
+                    if (nutrientBadge) nutrientBadge.style.display = 'none';
+
+                    // [NEW] 모든 입력 필드 초기화 (폼 리셋)
+                    const form = document.getElementById('manual-data-form');
+                    if (form) form.reset();
+
+                    // [NEW] 양액 분석 결과 카드도 초기화
+                    const nutrientCard = document.getElementById('nutrient-solution-card');
+                    if (nutrientCard) {
+                        nutrientCard.classList.add('hidden');
+                        const nutrientList = document.getElementById('nutrient-solution-list');
+                        if (nutrientList) {
+                            nutrientList.innerHTML = '<li class="no-solution">데이터를 입력하고 분석을 실행하세요.</li>';
+                        }
+                    }
+
+                    // [NEW] 수확량 예측 초기화
+                    const yieldAmount = document.getElementById('yield-amount');
+                    if (yieldAmount) yieldAmount.value = '';
+                    const wholesaleRev = document.getElementById('wholesale-revenue');
+                    const retailRev = document.getElementById('retail-revenue');
+                    if (wholesaleRev) wholesaleRev.textContent = '--';
+                    if (retailRev) retailRev.textContent = '--';
+
+                    // 1. Activate Menu
+                    document.querySelectorAll('.nav-item').forEach(nav => nav.classList.remove('active'));
+                    item.classList.add('active');
+
+                    // 2. Switch Mode UI
+                    const premiumSection = document.querySelector('.premium-only');
+                    const premiumBanner = document.getElementById('premium-banner');
+                    const basicSelectors = document.querySelector('.crop-selector-group'); // Basic selectors
+                    const envSection = document.querySelector('.form-section'); // Environment section
+
+                    if (mode === 'premium') {
+                        // Premium Mode: Show Nutrient Section, Hide Basic Selectors (to match screenshot)
+                        if (premiumSection) {
+                            premiumSection.classList.remove('hidden');
+                            premiumSection.style.display = 'block';
+                        }
+                        if (mainTitle) mainTitle.textContent = '프리미엄 정밀 관제 (Premium)';
+
+                        // Hide Basic Selectors to avoid duplication (Premium uses its own crop selector)
+                        if (basicSelectors) {
+                            basicSelectors.style.display = 'none';
+                        }
+
+                        // Hide Banner
+                        if (premiumBanner) {
+                            premiumBanner.style.display = 'none';
+                        }
+                    } else {
+                        // Basic Mode: Show Basic Selectors, Hide Nutrient Section
+                        if (premiumSection) {
+                            premiumSection.classList.add('hidden');
+                            premiumSection.style.display = 'none';
+                        }
+                        if (mainTitle) mainTitle.textContent = '스마트 팜 통합 관제 (Basic)';
+
+                        // Show Basic Selectors
+                        if (basicSelectors) {
+                            basicSelectors.style.display = 'flex';
+                        }
+
+                        // Show Banner
+                        if (premiumBanner) {
+                            premiumBanner.style.display = 'flex';
+                        }
+                    }
+                });
+            });
+
+            const form = document.getElementById('manual-data-form');
+            if (!form) return;
+
+            // Crop Data for Scientific Analysis
+            const cropDB = {
+                strawberry: { name: '딸기', tempOpt: [17, 23], humOpt: [60, 70], desc: '저온성 작물' },
+                tomato: { name: '토마토', tempOpt: [22, 27], humOpt: [65, 75], desc: '광 요구도 높음' },
+                paprika: { name: '파프리카', tempOpt: [21, 26], humOpt: [70, 80], desc: '착과기 온도 관리 중요' },
+                cucumber: { name: '오이', tempOpt: [24, 28], humOpt: [75, 85], desc: '수분 요구도 높음' },
+                lettuce: { name: '상추', tempOpt: [15, 20], humOpt: [60, 70], desc: '호냉성 엽채류' },
+                default: { name: '작물', tempOpt: [20, 25], humOpt: [60, 70], desc: '표준 관리' }
+            };
+
+            form.addEventListener('submit', (e) => {
+                // Wait briefly to allow UI updates, then forcing results
+                setTimeout(() => {
+                    try {
+                        // 1. Acquire Integrated Data
+                        const temp = parseFloat(document.getElementById('input-temp').value) || 26.5;
+                        const hum = parseFloat(document.getElementById('input-hum').value) || 60;
+                        const light = parseFloat(document.getElementById('input-light')?.value) || 20000;
+                        const co2 = parseFloat(document.getElementById('input-co2')?.value) || 400;
+
+                        // Premium Nutrient Data
+                        const inEC = parseFloat(document.getElementById('input-in-ec')?.value) || 0;
+                        const inPH = parseFloat(document.getElementById('input-in-ph')?.value) || 0;
+                        const rootEC = parseFloat(document.getElementById('input-root-ec')?.value) || 0;
+
+                        // [Fix] Check Active Mode (Basic vs Premium)
+                        const activeNav = document.querySelector('.nav-item.active[data-page="dashboard"]');
+                        const currentMode = activeNav ? activeNav.getAttribute('data-mode') : 'basic';
+
+                        // Force Premium if User is in Premium Dashboard (even if inputs are empty)
+                        const isNutrientActive = (currentMode === 'premium') || (inEC > 0 || rootEC > 0);
+
+                        const cropSelect = document.getElementById('select-crop');
+                        const cropKey = cropSelect.value;
+                        const cropInfo = cropDB[cropKey] || cropDB.default;
+
+                        // [New] Get Growth Stage
+                        const stageSelect = document.getElementById('nutrient-stage-select');
+                        const stageKey = stageSelect ? stageSelect.value : 'vegetative';
+
+                        // 2. Scientific Integrated Algorithms
+                        // A. VPD Calculation
+                        const svp = 0.6108 * Math.exp((17.27 * temp) / (temp + 237.3));
+                        const vpd = (svp * (1 - hum / 100)).toFixed(2);
+
+                        // B. Dynamic EC Target with Growth Stage Logic
+                        // Base EC by Crop
+                        let baseEC = (cropKey === 'strawberry') ? 1.0 : (cropKey === 'tomato' ? 2.5 : 2.0);
+                        let stageFactor = 0;
+                        let stageDesc = '';
+
+                        // Stage-specific Factor (Scientific Rationale)
+                        switch (stageKey) {
+                            case 'planting':
+                                stageFactor = -0.4;
+                                stageDesc = '정식기 (활착 촉진을 위해 저농도 관리)';
+                                break;
+                            case 'vegetative':
+                                stageFactor = -0.2;
+                                stageDesc = '영양 생장기 (잎/줄기 성장 중심)';
+                                break;
+                            case 'flowering':
+                                stageFactor = 0.0;
+                                stageDesc = '개화기 (화아 분화 및 생식 생장 전환)';
+                                break;
+                            case 'fruiting':
+                                stageFactor = +0.3;
+                                stageDesc = '비대기 (과실 비대를 위한 고농도 양분 요구)';
+                                break;
+                            case 'harvest':
+                                stageFactor = +0.1;
+                                stageDesc = '수확기 (균형 잡힌 양분 공급)';
+                                break;
+                            case 'late':
+                                stageFactor = -0.1;
+                                stageDesc = '수확 후기 (초세 관리)';
+                                break;
+                        }
+
+                        let targetEC = baseEC + stageFactor;
+                        let envCompMessage = [];
+
+                        // Environmental Compensation
+                        if (temp > 27 || light > 40000) {
+                            targetEC -= 0.2;
+                            envCompMessage.push('☀️ 고온/강광 (수분 흡수 촉진)');
+                        } else if (light < 10000) {
+                            targetEC += 0.2;
+                            envCompMessage.push('☁️ 저광 (도장 억제)');
+                        }
+
+                        targetEC = targetEC.toFixed(1);
+
+                        // 3. Generate Integrated Report
+                        let resultsHTML = '';
+
+                        // [Header Section]
+                        if (isNutrientActive) {
+                            resultsHTML += `
+                                <li style="background: linear-gradient(135deg, #1e1b4b, #312e81); padding: 15px; border-radius: 12px; margin-bottom: 15px; border: 1px solid #6366f1; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                                    <h4 style="color: #a5b4fc; margin: 0 0 5px 0; font-size: 1.1em;">🔬 RTS 통합 정밀 분석 (생육 단계별 최적화)</h4>
+                                    <div style="font-size: 0.9em; color: #e0e7ff; line-height: 1.4;">
+                                        현재 <strong>[${stageDesc.split('(')[0].trim()}]</strong> 단계와 온실 환경에 맞춰 최적 제어값을 산출했습니다.<br>
+                                        <div style="margin-top: 8px; display: flex; gap: 10px; flex-wrap: wrap;">
+                                            <span style="padding: 5px 10px; background: rgba(99, 102, 241, 0.2); border-radius: 4px; border: 1px solid rgba(99, 102, 241, 0.5);">
+                                                🎯 목표 EC: <strong>${targetEC}dS/m</strong>
+                                            </span>
+                                            <span style="padding: 5px 10px; background: rgba(16, 185, 129, 0.2); border-radius: 4px; border: 1px solid rgba(16, 185, 129, 0.5);">
+                                                🌱 단계 요인: ${stageFactor > 0 ? '+' : ''}${stageFactor}
+                                            </span>
+                                            <span style="padding: 5px 10px; background: rgba(245, 158, 11, 0.2); border-radius: 4px; border: 1px solid rgba(245, 158, 11, 0.5);">
+                                                🌦️ 환경 요인: ${envCompMessage.length > 0 ? envCompMessage.join(', ') : '보정 없음'}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </li>
+                            `;
+                        } else {
+                            resultsHTML += `<li style="padding:10px; border-bottom:1px solid #333; margin-bottom:10px; color:#adfa1d;"><strong>🌿 BASIC 온실 진단</strong> (Premium 모드에서 정밀 분석 가능)</li>`;
+                        }
+
+                        // [Analysis Content]
+                        // 1. Nutrient Interaction (Only Premium)
+                        if (isNutrientActive) {
+                            // Check if inputs are strictly empty
+                            if (inEC === 0 && rootEC === 0) {
+                                resultsHTML += `
+                                    <li style="border-left: 4px solid #6366f1; background: rgba(99, 102, 241, 0.1); padding: 12px; border-radius: 4px; margin-bottom: 8px; color: #c4b5fd;">
+                                        <strong>ℹ️ 입력 데이터 대기중</strong><br>
+                                        데이터를 입력하시면 <strong>${stageDesc.split('(')[0]}</strong>에 맞는 정밀 처방전을 제공합니다.<br>
+                                        (상단 목표값은 현재 셋팅해야 할 적정 가이드입니다)
+                                    </li>
+                                `;
+                            } else {
+                                const ecGap = (inEC - targetEC).toFixed(1);
+
+                                // Diagnosis based on Integrated Target
+                                if (Math.abs(ecGap) > 0.3) {
+                                    const status = ecGap > 0 ? '과다' : '부족';
+                                    const action = ecGap > 0 ? '낮추세요' : '높이세요';
+                                    const color = ecGap > 0 ? '#f59e0b' : '#ef4444';
+                                    resultsHTML += `<li style="border-left: 4px solid ${color}; background: rgba(0,0,0,0.2); padding: 12px; border-radius: 4px; margin-bottom: 8px;"><strong style="color: ${color}">⚠️ 급액 농도 ${status} (설정: ${inEC} vs 목표: ${targetEC})</strong><br>현재 [${stageDesc.split('(')[0]}] 단계에는 EC <strong>${targetEC}</strong>dS/m가 이상적입니다.<br>급액 농도를 <strong>${action}</strong>.</li>`;
+                                } else {
+                                    resultsHTML += `<li style="border-left: 4px solid #10b981; background: rgba(0,0,0,0.2); padding: 12px; border-radius: 4px; margin-bottom: 8px;"><strong style="color: #34d399;">✅ 생육 단계 적합 관리 중</strong><br>현재 [${stageDesc.split('(')[0]}] 단계에 맞는 적절한 EC 농도입니다.</li>`;
+                                }
+
+                                // Salt Accumulation Check
+                                const drainDiff = (rootEC - inEC).toFixed(2);
+                                if (drainDiff > 0.5) {
+                                    resultsHTML += `<li style="border-left: 4px solid #f43f5e; background: rgba(244, 63, 94, 0.1); padding: 12px; margin-bottom: 8px; border-radius: 4px;"><strong>🚨 뿌리 염류 집적 (+${drainDiff})</strong><br>비대기나 수확기에 흔히 발생하는 염류 집적입니다. 배액률을 높여 씻어내세요.</li>`;
+                                }
+
+                                // pH check
+                                if (inPH > 6.3 || inPH < 5.5) {
+                                    resultsHTML += `<li style="border-left: 4px solid #f59e0b; padding:10px; margin-bottom:8px; border-radius:4px;"><strong>⚠️ pH 불균형 (${inPH})</strong><br>양분 흡수 저해 위험. 5.8~6.0으로 보정하세요.</li>`;
+                                }
+                            }
+                        }
+
+                        // 2. Environmental Diagnosis (Common)
+                        resultsHTML += `<div style="margin: 15px 0 5px 0; border-top: 1px dashed #444; padding-top: 10px; color: #94a3b8; font-size: 0.9em;">온실 환경 진단</div>`;
+
+                        // Temperature
+                        if (temp > cropInfo.tempOpt[1]) {
+                            resultsHTML += `<li style="color:#fca5a5; margin-bottom: 5px;">• 🌡️ <strong>고온(${temp}°C):</strong> 환기창 개방 및 유동팬 가동 권장</li>`;
+                        } else if (temp < cropInfo.tempOpt[0]) {
+                            resultsHTML += `<li style="color:#93c5fd; margin-bottom: 5px;">• 🌡️ <strong>저온(${temp}°C):</strong> 난방기 가동 및 보온 커튼 확인</li>`;
+                        } else {
+                            resultsHTML += `<li style="color:#86efac; margin-bottom: 5px;">• 🌡️ <strong>온도 적정:</strong> 작물 생육에 이상적인 온도입니다.</li>`;
+                        }
+
+                        // VPD
+                        if (vpd > 1.6) resultsHTML += `<li style="color:#fcd34d;">• ☀️ <strong>건조(VPD ${vpd}):</strong> 엽면 시비나 가습이 필요합니다.</li>`;
+                        else if (vpd < 0.5) resultsHTML += `<li style="color:#fca5a5;">• 💧 <strong>다습(VPD ${vpd}):</strong> 잿빛곰팡이병 주의. 제습 난방하세요.</li>`;
+                        else resultsHTML += `<li style="color:#86efac;">• 💧 <strong>습도 적정:</strong> 광합성에 최적화된 상태입니다.</li>`;
+
+                        // Light (if user inputs)
+                        if (light > 0 && light < 15000) {
+                            resultsHTML += `<li style="color:#e2e8f0; margin-top:5px;">• ☁️ <strong>일조 부족:</strong> 보광등 사용 시 생산성 증대가 예상됩니다.</li>`;
+                        }
+
+                        // Force Render
+                        const card = document.getElementById('nutrient-solution-card');
+                        const list = document.getElementById('nutrient-solution-list');
+                        const targetInfo = document.getElementById('nutrient-target-info');
+                        const badge = document.getElementById('nutrient-status-badge');
+
+                        if (card && list) {
+                            card.classList.remove('hidden');
+                            // Dynamic Style based on mode
+                            const borderColor = isNutrientActive ? '#6366f1' : '#10b981';
+                            card.style.cssText = `display: block !important; visibility: visible !important; opacity: 1 !important; background: rgba(15, 23, 42, 0.98) !important; color: white !important; min-height: 200px; padding: 20px; border-radius: 12px; margin-top: 15px; border: 1px solid ${borderColor}; box-shadow: 0 10px 25px rgba(0,0,0,0.5);`;
+
+                            list.innerHTML = resultsHTML;
+
+                            const title = isNutrientActive ? `<strong>${cropInfo.name} Integrated AI Solution</strong>` : `<strong>${cropInfo.name} Basic Environment Report</strong>`;
+                            if (targetInfo) targetInfo.innerHTML = title;
+
+                            if (badge) {
+                                badge.textContent = isNutrientActive ? 'AI PREMIUM' : 'BASIC';
+                                badge.className = 'status-badge ' + (isNutrientActive ? 'premium' : 'success');
+                                badge.style.backgroundColor = isNutrientActive ? '#4f46e5' : '#10b981';
+                            }
+
+                            card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                        }
+                    } catch (e) { console.error(e); }
+                }, 300);
+            });
+
+            // [New] Unlock Premium Membership Feature
+            const unlockBtn = document.getElementById('unlock-premium-btn');
+            if (unlockBtn) {
+                unlockBtn.addEventListener('click', () => {
+                    // 1. Check Login
+                    const userStr = localStorage.getItem('smartfarm_user');
+
+                    if (!userStr) {
+                        // If not logged in, simulate login or ask to login
+                        const doLogin = confirm('로그인이 필요한 서비스입니다.\n\n[테스트 모드]\n임시 계정(user/premium)으로 즉시 로그인하시겠습니까?');
+                        if (doLogin) {
+                            const mockUser = { id: 'test_user', name: '김농부', role: 'premium', farmName: '희망 농장' };
+                            localStorage.setItem('smartfarm_user', JSON.stringify(mockUser));
+                            alert('🎉 환영합니다! 프리미엄 등급으로 로그인되었습니다.\n\n이제 Premium Dashboard에 접근할 수 있습니다.');
+                            window.location.reload();
+                        }
+                        return;
+                    }
+
+                    // 2. Process Payment (Simulation)
+                    const user = JSON.parse(userStr);
+                    if (user.role === 'premium' || user.role === 'admin') {
+                        alert('이미 프리미엄 서비스를 이용 중입니다.');
+                        return;
+                    }
+
+                    const confirmed = confirm('💎 프리미엄 멤버십 (월 9,900원)\n\n정밀 환경 제어, 양액 통합 분석, RTS 알고리즘 등 모든 고급 기능을 이용하시겠습니까?');
+
+                    if (confirmed) {
+                        // 3. Update Role
+                        user.role = 'premium';
+                        localStorage.setItem('smartfarm_user', JSON.stringify(user));
+
+                        alert('결제가 완료되었습니다! 💳\n\n이제 [Premium Dashboard]의 모든 기능을 제한 없이 이용하실 수 있습니다.');
+                        window.location.reload(); // Reload to reflect changes
+                    }
+                });
+            }
+        });
+        // [Hotfix] Override Premium Unlock Logic & Auto Redirect
+        // 기존 이벤트 리스너를 제거하고 새로운 로직을 적용하기 위해 요소 복제 및 교체
+        const oldUnlockBtn = document.getElementById('unlock-premium-btn');
+        if (oldUnlockBtn) {
+            const newUnlockBtn = oldUnlockBtn.cloneNode(true);
+            oldUnlockBtn.parentNode.replaceChild(newUnlockBtn, oldUnlockBtn);
+
+            newUnlockBtn.addEventListener('click', () => {
+                const userStr = localStorage.getItem('smartfarm_user');
+
+                // 1. Not Logged In
+                if (!userStr) {
+                    const doLogin = confirm('로그인이 필요한 서비스입니다.\n\n[테스트 모드]\n임시 계정(user/premium)으로 즉시 로그인하시겠습니까?');
+                    if (doLogin) {
+                        const mockUser = { id: 'test_user', name: '김농부', role: 'premium', farmName: '희망 농장' };
+                        localStorage.setItem('smartfarm_user', JSON.stringify(mockUser));
+                        localStorage.setItem('auto_redirect_premium', 'true');
+                        alert('🎉 환영합니다! 프리미엄 등급으로 로그인되었습니다.\n\n[Premium Dashboard]로 이동합니다. 🚀');
+                        window.location.reload();
+                    }
+                    return;
+                }
+
+                // 2. Already Premium
+                const user = JSON.parse(userStr);
+                if (user.role === 'premium' || user.role === 'admin') {
+                    const premiumNav = document.querySelector('.nav-item[data-mode="premium"]');
+                    if (premiumNav) {
+                        alert('이미 프리미엄 서비스를 이용 중이십니다.\n\n[Premium Dashboard]로 바로 이동합니다! 🚀');
+                        premiumNav.click();
+                    }
+                    return;
+                }
+
+                // 3. Upgrade Payment
+                const confirmed = confirm('💎 프리미엄 멤버십 (월 9,900원)\n\n정밀 환경 제어, 양액 통합 분석, RTS 알고리즘 등 모든 고급 기능을 이용하시겠습니까?');
+                if (confirmed) {
+                    user.role = 'premium';
+                    localStorage.setItem('smartfarm_user', JSON.stringify(user));
+                    localStorage.setItem('auto_redirect_premium', 'true');
+                    alert('결제가 완료되었습니다! 💳\n\n모든 제한이 해제되었습니다.\n[Premium Dashboard]로 이동합니다.');
+                    window.location.reload();
+                }
+            });
+        }
+
+        // [Auto Redirect System]
+        if (localStorage.getItem('auto_redirect_premium') === 'true') {
+            localStorage.removeItem('auto_redirect_premium'); // Clear flag
+            setTimeout(() => {
+                const premiumNav = document.querySelector('.nav-item[data-mode="premium"]');
+                if (premiumNav) {
+                    console.log('🚀 Auto Redirecting to Premium Dashboard...');
+                    premiumNav.click();
+                }
+            }, 500);
+        }
+    </script>
+    <!-- [Payment Modal System] -->
+    <style>
+        /* Payment Modal Styles */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(8px);
+            z-index: 9999;
+            display: none;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .payment-modal {
+            background: linear-gradient(135deg, #1e293b, #0f172a);
+            border: 1px solid #334155;
+            border-radius: 20px;
+            width: 90%;
+            max-width: 450px;
+            padding: 0;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            overflow: hidden;
+            animation: modalFadeIn 0.3s ease-out;
+            color: white;
+            font-family: 'Pretendard', sans-serif;
+        }
+
+        @keyframes modalFadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .payment-header {
+            padding: 25px;
+            background: linear-gradient(to right, #6366f1, #4f46e5);
+            text-align: center;
+        }
+
+        .payment-header h3 {
+            margin: 0;
+            font-size: 1.5em;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .payment-body {
+            padding: 30px 25px;
+        }
+
+        .plan-card {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid #475569;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .plan-card:hover,
+        .plan-card.selected {
+            background: rgba(99, 102, 241, 0.1);
+            border-color: #6366f1;
+            box-shadow: 0 0 15px rgba(99, 102, 241, 0.3);
+        }
+
+        .plan-price {
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #a5b4fc;
+        }
+
+        .feature-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            font-size: 0.9em;
+            color: #94a3b8;
+        }
+
+        .feature-list li {
+            margin-bottom: 5px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .payment-footer {
+            padding: 20px 25px;
+            background: rgba(0, 0, 0, 0.2);
+            text-align: center;
+        }
+
+        .pay-btn {
+            background: #6366f1;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 10px;
+            font-size: 1.1em;
+            font-weight: bold;
+            cursor: pointer;
+            width: 100%;
+            transition: all 0.2s;
+            box-shadow: 0 4px 6px rgba(99, 102, 241, 0.4);
+        }
+
+        .pay-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(99, 102, 241, 0.6);
+        }
+
+        .processing-view {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            padding: 40px 0;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid rgba(255, 255, 255, 0.1);
+            border-top: 4px solid #6366f1;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 20px;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+    </style>
+
+    <!-- PortOne SDK -->
+    <script src="https://cdn.iamport.kr/v1/iamport.js"></script>
+    <div id="paymentModalOverlay" class="modal-overlay">
+        <div class="payment-modal">
+            <!-- Step 1: Selection -->
+            <div id="paymentStep1">
+                <div class="payment-header">
+                    <h3>💎 Premium 멤버십</h3>
+                    <p style="margin:5px 0 0 0; opacity:0.8; font-size:0.9em;">정밀 농업을 위한 최고의 선택</p>
+                </div>
+                <div class="payment-body">
+                    <div class="plan-card selected">
+                        <div>
+                            <div style="font-weight:bold; font-size:1.1em; color:white;">Month Plan</div>
+                            <div style="font-size:0.85em; color:#94a3b8; margin-top:4px;">매월 자동 결제</div>
+                        </div>
+                        <div class="plan-price" style="color:#fcd34d;">₩4,900 /월 <span
+                                style="font-size:0.6em; text-decoration:line-through; color:#64748b;">(₩9,900)</span>
+                        </div>
+                    </div>
+                    <ul class="feature-list">
+                        <li>✅ <strong>RTS 기반</strong> 통합 정밀 분석 알고리즘</li>
+                        <li>✅ 작물별/생육단계별 <strong>맞춤 처방</strong></li>
+                        <li>✅ <strong>무제한</strong> 데이터 저장 및 리포트</li>
+                        <li>✅ 우선 기술 지원 (VIP Support)</li>
+                    </ul>
+                </div>
+                <div class="payment-footer">
+                    <button class="pay-btn" id="confirmPaymentBtn">구독 시작하기</button>
+                    <button style="background:none; border:none; color:#64748b; margin-top:10px; cursor:pointer;"
+                        onclick="document.getElementById('paymentModalOverlay').style.display='none'; const basicNav = document.querySelector('.nav-item[data-mode=\'basic\']'); if(basicNav) basicNav.click();">닫기</button>
+                </div>
+            </div>
+
+            <!-- Step 2: Processing -->
+            <div id="paymentStep2" class="processing-view">
+                <div class="spinner"></div>
+                <h4 style="margin:0; font-size:1.2em;">결제 처리 중...</h4>
+                <p style="color:#94a3b8; font-size:0.9em;">잠시만 기다려주세요.</p>
+            </div>
+
+            <!-- Step 3: Success -->
+            <div id="paymentStep3" class="processing-view">
+                <div style="font-size:3em; margin-bottom:15px;">🎉</div>
+                <h4 style="margin:0; font-size:1.2em; color:#10b981;">구독 완료!</h4>
+                <p style="color:#94a3b8; font-size:0.9em; text-align:center;">프리미엄 멤버십이 활성화되었습니다.<br>대시보드로 이동합니다.</p>
+            </div>
+        </div>
+    </div>
+    <script>
+        // [Final Override] Payment Modal Logic
+        // 이전의 모든 이벤트 리스너를 무시하고 모달 로직을 최우선으로 적용합니다.
+        document.addEventListener('DOMContentLoaded', () => {
+            setTimeout(() => {
+                const btn = document.getElementById('unlock-premium-btn');
+                if (btn) {
+                    // Remove previous listeners by cloning one last time
+                    const finalBtn = btn.cloneNode(true);
+                    btn.parentNode.replaceChild(finalBtn, btn);
+
+                    finalBtn.addEventListener('click', () => {
+                        const userStr = localStorage.getItem('smartfarm_user');
+
+                        // 1. Login Check
+                        if (!userStr) {
+                            if (confirm('로그인이 필요한 서비스입니다.\n\n[테스트 모드]\n임시 계정(user/premium)으로 로그인하시겠습니까?')) {
+                                const mockUser = { id: 'test_user', name: '김농부', role: 'premium', farmName: '희망 농장' };
+                                localStorage.setItem('smartfarm_user', JSON.stringify(mockUser));
+                                localStorage.setItem('auto_redirect_premium', 'true');
+                                alert('🎉 환영합니다! 프리미엄 등급으로 로그인되었습니다.');
+                                window.location.reload();
+                            }
+                            return;
+                        }
+
+                        // 2. Already Premium Check
+                        const user = JSON.parse(userStr);
+                        if (user.role === 'premium' || user.role === 'admin') {
+                            const premiumNav = document.querySelector('.nav-item[data-mode="premium"]');
+                            if (premiumNav) {
+                                alert('이미 프리미엄 멤버십을 이용 중입니다. 💎\n[Premium Dashboard]로 이동합니다.');
+                                premiumNav.click();
+                            }
+                            return;
+                        }
+
+                        // 3. Open Payment Modal
+                        const modal = document.getElementById('paymentModalOverlay');
+                        if (modal) {
+                            modal.style.display = 'flex';
+
+                            // Reset UI state
+                            document.getElementById('paymentStep1').style.display = 'block';
+                            document.getElementById('paymentStep2').style.display = 'none';
+                            document.getElementById('paymentStep3').style.display = 'none';
+
+                            // Payment Action
+                            const payBtn = document.getElementById('confirmPaymentBtn');
+                            payBtn.onclick = () => {
+                                // Switch to Processing
+                                document.getElementById('paymentStep1').style.display = 'none';
+                                document.getElementById('paymentStep2').style.display = 'flex';
+
+                                // Simulate API Call (2s)
+                                setTimeout(() => {
+                                    // Success Layout
+                                    document.getElementById('paymentStep2').style.display = 'none';
+                                    document.getElementById('paymentStep3').style.display = 'flex';
+
+                                    // Execute Upgrade
+                                    user.role = 'premium';
+                                    localStorage.setItem('smartfarm_user', JSON.stringify(user));
+                                    localStorage.setItem('auto_redirect_premium', 'true');
+
+                                    // Redirect
+                                    setTimeout(() => {
+                                        window.location.reload();
+                                    }, 1500);
+                                }, 2000);
+                            };
+                        } else {
+                            // Modal not found fallback
+                            if (confirm('결제 모듈 오류. 강제 업그레이드 하시겠습니까?')) {
+                                user.role = 'premium';
+                                localStorage.setItem('smartfarm_user', JSON.stringify(user));
+                                window.location.reload();
+                            }
+                        }
+                    });
+                }
+            }, 200); // Delay to ensure DOM is ready and previous scripts ran
+        });
+    </script>
+    <script>
+        // [Real Payment Override] PortOne Integration (Test Mode)
+        // 실제 결제 모듈(아임포트)을 연동하여 PG사 결제창을 호출합니다.
+        document.addEventListener('DOMContentLoaded', () => {
+            setTimeout(() => {
+                const btn = document.getElementById('unlock-premium-btn');
+                const paymentBtn = document.getElementById('confirmPaymentBtn');
+
+                // 4,900원 가격 반영 확인 및 강제 수정 (혹시 실패했을 경우 대비)
+                const priceEls = document.querySelectorAll('.plan-price');
+                priceEls.forEach(el => {
+                    if (!el.innerHTML.includes('4,900')) {
+                        el.innerHTML = '₩4,900 /월 <span style="font-size:0.6em; text-decoration:line-through; color:#64748b;">(₩9,900)</span>';
+                    }
+                });
+                if (paymentBtn && !paymentBtn.innerText.includes('4,900')) {
+                    paymentBtn.innerText = '구독 시작하기 (4,900원)';
+                }
+
+                if (btn) {
+                    // Remove previous listeners (Clone & Replace)
+                    const finalRealBtn = btn.cloneNode(true);
+                    btn.parentNode.replaceChild(finalRealBtn, btn);
+
+                    finalRealBtn.addEventListener('click', () => {
+                        const userStr = localStorage.getItem('smartfarm_user');
+
+                        // 1. Login Check
+                        if (!userStr) {
+                            if (confirm('로그인이 필요한 서비스입니다.\n\n[테스트 모드]\n임시 계정(user/premium)으로 로그인하시겠습니까?')) {
+                                const mockUser = { id: 'test_user', name: '김농부', role: 'premium', farmName: '희망 농장' };
+                                localStorage.setItem('smartfarm_user', JSON.stringify(mockUser));
+                                localStorage.setItem('auto_redirect_premium', 'true');
+                                alert('🎉 환영합니다! 프리미엄 등급으로 로그인되었습니다.');
+                                window.location.reload();
+                            }
+                            return;
+                        }
+
+                        // 2. Already Premium Check
+                        const user = JSON.parse(userStr);
+                        if (user.role === 'premium' || user.role === 'admin') {
+                            const premiumNav = document.querySelector('.nav-item[data-mode="premium"]');
+                            if (premiumNav) {
+                                alert('이미 프리미엄 멤버십을 이용 중입니다. 💎\n[Premium Dashboard]로 이동합니다.');
+                                premiumNav.click();
+                            }
+                            return;
+                        }
+
+                        // 3. Open Payment Modal
+                        const modal = document.getElementById('paymentModalOverlay');
+                        if (modal) {
+                            modal.style.display = 'flex';
+
+                            // Reset UI
+                            document.getElementById('paymentStep1').style.display = 'block';
+                            document.getElementById('paymentStep2').style.display = 'none';
+                            document.getElementById('paymentStep3').style.display = 'none';
+
+                            // 4. Real Payment Action (PortOne)
+                            const realPayBtn = document.getElementById('confirmPaymentBtn');
+                            realPayBtn.onclick = () => {
+                                // Hide Plan
+                                document.getElementById('paymentStep1').style.display = 'none';
+
+                                // Check SDK
+                                if (!window.IMP) {
+                                    alert('결제 모듈이 로드되지 않았습니다. 새로고침 해주세요.');
+                                    window.location.reload();
+                                    return;
+                                }
+
+                                // Init PortOne
+                                const IMP = window.IMP;
+                                IMP.init('imp14397622'); // Public Test Code for KG, Kakao
+
+                                // Request Pay
+                                IMP.request_pay({
+                                    pg: 'html5_inicis', // KG Inicis
+                                    pay_method: 'card',
+                                    merchant_uid: 'mid_' + new Date().getTime(),
+                                    name: '스마트팜 Premium 월간 구독 (4,900원)',
+                                    amount: 4900,
+                                    buyer_email: 'test@farm.com',
+                                    buyer_name: user.name,
+                                    buyer_tel: '010-1234-5678',
+                                }, function (rsp) {
+                                    if (rsp.success) {
+                                        // Success Layout
+                                        document.getElementById('paymentStep2').style.display = 'flex';
+
+                                        setTimeout(() => {
+                                            // Upgrade
+                                            user.role = 'premium';
+                                            localStorage.setItem('smartfarm_user', JSON.stringify(user));
+                                            localStorage.setItem('auto_redirect_premium', 'true');
+
+                                            // Final Success View
+                                            document.getElementById('paymentStep2').style.display = 'none';
+                                            document.getElementById('paymentStep3').style.display = 'flex';
+
+                                            // Redirect
+                                            setTimeout(() => { window.location.reload(); }, 1500);
+                                        }, 1000);
+                                    } else {
+                                        // Fail
+                                        alert('결제 실패: ' + rsp.error_msg);
+                                        document.getElementById('paymentStep1').style.display = 'block';
+                                    }
+                                });
+                            };
+                        }
+                    });
+                }
+            }, 500); // Override all previous logic
+        });
+    </script>
+    <script>
+        // [Hotfix] Force Logout Handler
+        // 로그아웃 버튼이 제대로 동작하지 않는 문제를 해결하기 위해 이벤트를 강제로 재할당합니다.
+        document.addEventListener('DOMContentLoaded', () => {
+            setTimeout(() => {
+                const logoutBtn = document.getElementById('logout-btn');
+                if (logoutBtn) {
+                    console.log("Found logout button, attaching force handler.");
+
+                    // Remove existing listeners by cloning
+                    const newLogoutBtn = logoutBtn.cloneNode(true);
+                    logoutBtn.parentNode.replaceChild(newLogoutBtn, logoutBtn);
+
+                    newLogoutBtn.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        console.log("Logout clicked.");
+
+                        // 1. Firebase SignOut
+                        if (typeof firebase !== 'undefined' && firebase.auth) {
+                            firebase.auth().signOut().then(() => {
+                                console.log("Firebase signed out successfully.");
+                                clearLocalAndRedirect();
+                            }).catch((err) => {
+                                console.error("Firebase signout failed:", err);
+                                clearLocalAndRedirect();
+                            });
+                        } else {
+                            // 2. Local Only
+                            clearLocalAndRedirect();
+                        }
+                    });
+                }
+            }, 800); // Wait for other scripts to initialize
+        });
+
+        function clearLocalAndRedirect() {
+            sessionStorage.clear();
+            localStorage.removeItem('currentUser');
+            // 'users'는 지우지 않음 (로컬 가입 데이터 유지)
+            window.location.href = 'login.html';
+        }
+    </script>
+    <script>
+        // [Final Payment Logic] 
+        // 이전의 결제 스크립트들이 잘못된 키(smartfarm_user)를 사용하는 문제를 해결하기 위해
+        // 가장 마지막에 실행되어 올바른 로직(currentUser, Firestore 연동)으로 덮어씌웁니다.
+        document.addEventListener('DOMContentLoaded', () => {
+            setTimeout(() => {
+                const btn = document.getElementById('unlock-premium-btn');
+                if (btn) {
+                    console.log("Applying Final Payment Logic...");
+                    const finalBtn = btn.cloneNode(true);
+                    btn.parentNode.replaceChild(finalBtn, btn);
+
+                    finalBtn.addEventListener('click', () => {
+                        // 1. Get User (Standard Key from auth.js)
+                        let userStr = localStorage.getItem('currentUser') || sessionStorage.getItem('currentUser');
+
+                        if (!userStr) {
+                            if (confirm('로그인이 필요한 서비스입니다.\n로그인 페이지로 이동하시겠습니까?')) {
+                                window.location.href = 'login.html';
+                            }
+                            return;
+                        }
+
+                        const user = JSON.parse(userStr);
+
+                        // 2. Already Premium Check
+                        if (user.role === 'premium' || user.role === 'admin') {
+                            alert('이미 프리미엄 멤버십을 이용 중입니다. 💎');
+                            const premiumNav = document.querySelector('.nav-item[data-mode="premium"]');
+                            if (premiumNav) premiumNav.click();
+                            return;
+                        }
+
+                        // 3. Open Payment Modal
+                        const modal = document.getElementById('paymentModalOverlay');
+                        if (modal) {
+                            modal.style.display = 'flex';
+
+                            // Reset Steps
+                            const step1 = document.getElementById('paymentStep1');
+                            const step2 = document.getElementById('paymentStep2');
+                            const step3 = document.getElementById('paymentStep3');
+                            if (step1) step1.style.display = 'block';
+                            if (step2) step2.style.display = 'none';
+                            if (step3) step3.style.display = 'none';
+
+                            // 4. Handle Payment
+                            const payBtn = document.getElementById('confirmPaymentBtn');
+                            if (payBtn) {
+                                // Ensure price text
+                                if (!payBtn.innerText.includes('4,900')) payBtn.innerText = '구독 시작하기 (4,900원)';
+
+                                payBtn.onclick = () => {
+                                    if (step1) step1.style.display = 'none';
+
+                                    if (!window.IMP) {
+                                        alert('결제 모듈 로드 실패. 새로고침 해주세요.');
+                                        return;
+                                    }
+
+                                    const IMP = window.IMP;
+                                    IMP.init('imp14397622');
+
+                                    IMP.request_pay({
+                                        pg: 'html5_inicis',
+                                        pay_method: 'card',
+                                        merchant_uid: 'mid_' + new Date().getTime(),
+                                        name: '스마트팜 Premium (4,900원)',
+                                        amount: 4900,
+                                        buyer_email: user.email,
+                                        buyer_name: user.name,
+                                    }, function (rsp) {
+                                        if (rsp.success) {
+                                            if (step2) step2.style.display = 'flex'; // Processing...
+
+                                            // Upgrade Logic
+                                            setTimeout(() => {
+                                                user.role = 'premium';
+                                                localStorage.setItem('currentUser', JSON.stringify(user));
+                                                if (sessionStorage.getItem('currentUser')) {
+                                                    sessionStorage.setItem('currentUser', JSON.stringify(user));
+                                                }
+                                                // Auto Redirect Flag
+                                                localStorage.setItem('auto_redirect_premium', 'true');
+
+                                                // ★ Firestore Update ★
+                                                if (typeof firebase !== 'undefined' && firebase.firestore && user.uid) {
+                                                    firebase.firestore().collection('users').doc(user.uid).update({
+                                                        role: 'premium'
+                                                    }).then(() => console.log("DB Updated"));
+                                                }
+
+                                                if (step2) step2.style.display = 'none';
+                                                if (step3) step3.style.display = 'flex'; // Success
+
+                                                setTimeout(() => { window.location.reload(); }, 1500);
+                                            }, 1000);
+                                        } else {
+                                            alert('결제 실패: ' + rsp.error_msg);
+                                            if (step1) step1.style.display = 'block';
+                                        }
+                                    });
+                                };
+                            }
+                        }
+                    });
+                }
+            }, 50); // Immediate execution
+        });
+    </script>
+    <script>
+        // [New] Premium Nav Click -> Auto Trigger Payment
+        document.addEventListener('DOMContentLoaded', () => {
+            setTimeout(() => {
+                const premiumNav = document.querySelector('.nav-item[data-mode="premium"]');
+                const unlockBtn = document.getElementById('unlock-premium-btn');
+
+                if (premiumNav && unlockBtn) {
+                    console.log("Attaching Premium Nav Auto-Trigger");
+                    premiumNav.addEventListener('click', (e) => {
+                        // Check User Role
+                        let userStr = localStorage.getItem('currentUser') || sessionStorage.getItem('currentUser');
+                        if (userStr) {
+                            const user = JSON.parse(userStr);
+                            // If Basic user clicks Premium, trigger the payment modal
+                            if (user.role !== 'premium' && user.role !== 'admin') {
+                                console.log("Basic User detected on Premium Tab -> Triggering Payment Modal");
+                                setTimeout(() => {
+                                    unlockBtn.click();
+                                }, 300); // Small delay to let tab switch visually update first
+                            }
+                        }
+                    });
+                }
+            }, 50); // Immediate execution
+        });
+    </script>
+    <script>
+        // [New] Basic Nav Click -> Reset View
+        document.addEventListener('DOMContentLoaded', () => {
+            setTimeout(() => {
+                const basicNav = document.querySelector('.nav-item[data-mode="basic"]');
+                if (basicNav) {
+                    console.log("Attaching Basic Nav View Reset Listener");
+                    basicNav.addEventListener('click', (e) => {
+                        console.log("Resetting to Basic View...");
+                        // Hide Premium Fields
+                        document.querySelectorAll('.premium-only').forEach(el => el.classList.add('hidden'));
+                        // Relock Cards
+                        document.querySelectorAll('.premium-locked').forEach(el => el.classList.remove('unlocked'));
+                        // Reset Form Styles
+                        document.querySelectorAll('.entry-form').forEach(el => el.classList.remove('premium-active'));
+
+                        // Show Banner if user is Basic
+                        const premiumBanner = document.getElementById('premium-banner');
+                        let userStr = localStorage.getItem('currentUser') || sessionStorage.getItem('currentUser');
+                        let isPremium = false;
+                        if (userStr) {
+                            const user = JSON.parse(userStr);
+                            if (user.role === 'premium' || user.role === 'admin') isPremium = true;
+                        }
+
+                        if (premiumBanner && !isPremium) {
+                            premiumBanner.classList.remove('hidden');
+                        }
+
+                        // Scroll to Top
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                    });
+                }
+            }, 50); // Immediate execution
+        });
+    </script>
+    <!-- Mobile Bottom Navigation -->
+    <nav class="bottom-nav">
+        <a href="#" class="bottom-nav-item active nav-item" data-page="dashboard" data-mode="basic">
+            <i data-lucide="layout-dashboard"></i>
+            <span>Basic</span>
+        </a>
+        <a href="#" class="bottom-nav-item nav-item" data-page="dashboard" data-mode="premium">
+            <i data-lucide="crown"></i>
+            <span>Premium</span>
+        </a>
+        <a href="#" class="bottom-nav-item nav-item" data-page="ai-solution">
+            <i data-lucide="brain-circuit"></i>
+            <span>AI</span>
+        </a>
+        <a href="#" class="bottom-nav-item nav-item hidden" data-page="admin" id="admin-nav-mobile">
+            <i data-lucide="map"></i>
+            <span>Map</span>
+        </a>
+        <a href="#" class="bottom-nav-item" onclick="logout()">
+            <i data-lucide="log-out"></i>
+            <span>Logout</span>
+        </a>
+    </nav>
+</body>
+
+</html>
