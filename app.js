@@ -1347,16 +1347,23 @@ function initHarvestRegistration() {
             return;
         }
 
-        // [NEW] 1. Get Geolocation FIRST for regional pricing
+        // [NEW] 1. Check Geolocation Support
         if (!navigator.geolocation) {
-            alert("브라우저가 위치 정보를 지원하지 않습니다.\n전국 평균 시세로 조회합니다.");
-            calculateRevenue(); // Fallback to default pricing
+            if (confirm("브라우저가 위치 정보를 지원하지 않습니다.\n\n수동으로 지역을 선택하시겠습니까?")) {
+                showManualRegionSelector(cropId, yieldAmount);
+            } else {
+                calculateRevenue(); // Fallback to default pricing
+            }
             return;
         }
 
+        // [NEW] 2. Request Location Permission Aggressively
         registerBtn.disabled = true;
         registerBtn.innerHTML = '<i data-lucide="loader"></i> 위치 확인 중...';
         lucide.createIcons();
+        
+        // Show instruction tooltip
+        showLocationRequestGuide();
 
         navigator.geolocation.getCurrentPosition(async (position) => {
             const lat = position.coords.latitude;
@@ -1460,28 +1467,51 @@ function initHarvestRegistration() {
         }, (error) => {
             console.error("Geolocation Error:", error);
             
-            let errorMsg = "위치 정보를 가져올 수 없습니다.\n";
+            // Remove guide if exists
+            const guide = document.getElementById('location-guide');
+            if (guide) guide.remove();
+            
+            let errorMsg = "📍 위치 정보를 가져올 수 없습니다\n\n";
+            let showManualSelector = false;
+            
             switch(error.code) {
                 case error.PERMISSION_DENIED:
-                    errorMsg += "위치 권한이 거부되었습니다.\n브라우저 설정에서 위치 권한을 허용해주세요.";
+                    errorMsg += "❌ 위치 권한이 거부되었습니다.\n\n";
+                    errorMsg += "📌 수동으로 지역을 선택하시겠습니까?";
+                    showManualSelector = true;
                     break;
                 case error.POSITION_UNAVAILABLE:
-                    errorMsg += "위치 정보를 사용할 수 없습니다.";
+                    errorMsg += "위치 정보를 사용할 수 없습니다.\n";
+                    errorMsg += "수동으로 지역을 선택하시겠습니까?";
+                    showManualSelector = true;
                     break;
                 case error.TIMEOUT:
-                    errorMsg += "위치 정보 요청 시간이 초과되었습니다.";
+                    errorMsg += "⏱️ 위치 정보 요청 시간이 초과되었습니다.\n";
+                    errorMsg += "수동으로 지역을 선택하시겠습니까?";
+                    showManualSelector = true;
                     break;
             }
-            errorMsg += "\n\n전국 평균 시세로 조회합니다.";
-            
-            alert(errorMsg);
-            
-            // Fallback: 전국 평균 시세로 계산
-            calculateRevenue();
             
             registerBtn.disabled = false;
             registerBtn.innerHTML = '<i data-lucide="search"></i> 시세 조회';
             lucide.createIcons();
+            
+            if (showManualSelector) {
+                if (confirm(errorMsg)) {
+                    // Show manual region selector
+                    showManualRegionSelector(marketCropSelect.value, parseFloat(yieldAmountInput.value));
+                } else {
+                    // Use default (national average)
+                    calculateRevenue();
+                    showNotification(
+                        'ℹ️ 전국 평균 시세로 조회되었습니다',
+                        'info'
+                    );
+                }
+            } else {
+                alert(errorMsg + "\n\n전국 평균 시세로 조회합니다.");
+                calculateRevenue();
+            }
         }, {
             enableHighAccuracy: true, // GPS 사용
             timeout: 10000, // 10초로 증가
@@ -1900,6 +1930,160 @@ function getCropName(cropValue) {
         'melon': '멜론'
     };
     return cropNames[cropValue] || cropValue;
+}
+
+// [NEW] Show location permission guide
+function showLocationRequestGuide() {
+    const guide = document.createElement('div');
+    guide.id = 'location-guide';
+    guide.style.cssText = `
+        position: fixed;
+        top: 80px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: linear-gradient(135deg, #3b82f6, #2563eb);
+        color: white;
+        padding: 16px 24px;
+        border-radius: 12px;
+        box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+        z-index: 9999;
+        max-width: 450px;
+        animation: bounce 0.5s ease-out;
+        text-align: center;
+        font-size: 0.95em;
+        line-height: 1.6;
+    `;
+    guide.innerHTML = `
+        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0;"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"></path><circle cx="12" cy="10" r="3"></circle></svg>
+            <strong style="font-size: 1.1em;">📍 위치 권한 허용이 필요합니다</strong>
+        </div>
+        <p style="margin: 0; opacity: 0.95;">브라우저 상단의 팝업에서 <strong>"허용"</strong>을 눌러주세요</p>
+        <p style="margin: 8px 0 0 0; font-size: 0.85em; opacity: 0.8;">지역별 정확한 시세를 조회하기 위해 필요합니다</p>
+    `;
+    
+    const style = document.createElement('style');
+    style.textContent = `
+        @keyframes bounce {
+            0%, 100% { transform: translateX(-50%) translateY(0); }
+            50% { transform: translateX(-50%) translateY(-10px); }
+        }
+    `;
+    document.head.appendChild(style);
+    
+    document.body.appendChild(guide);
+    
+    // Auto remove after 5 seconds
+    setTimeout(() => {
+        if (document.getElementById('location-guide')) {
+            guide.remove();
+        }
+    }, 5000);
+}
+
+// [NEW] Show manual region selector
+function showManualRegionSelector(cropId, yieldAmount) {
+    const overlay = document.createElement('div');
+    overlay.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.7);
+        backdrop-filter: blur(5px);
+        z-index: 10000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        animation: fadeIn 0.3s ease-out;
+    `;
+    
+    const modal = document.createElement('div');
+    modal.style.cssText = `
+        background: linear-gradient(135deg, #1e293b, #334155);
+        border-radius: 20px;
+        padding: 30px;
+        max-width: 500px;
+        width: 90%;
+        box-shadow: 0 25px 50px rgba(0,0,0,0.5);
+        color: white;
+    `;
+    
+    modal.innerHTML = `
+        <h3 style="margin: 0 0 20px 0; font-size: 1.5em; display: flex; align-items: center; gap: 10px;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"></path><circle cx="12" cy="10" r="3"></circle></svg>
+            지역을 선택해주세요
+        </h3>
+        <p style="color: #94a3b8; margin-bottom: 20px;">지역별 시세를 확인하기 위해 농장이 위치한 지역을 선택해주세요.</p>
+        
+        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 20px;">
+            <button class="region-btn" data-region="seoul" style="padding: 16px; background: rgba(59, 130, 246, 0.2); border: 2px solid #3b82f6; border-radius: 12px; color: white; cursor: pointer; transition: all 0.2s; font-size: 1em;">
+                <div style="font-weight: bold; margin-bottom: 4px;">서울/경기</div>
+                <div style="font-size: 0.8em; opacity: 0.8;">가락시장 기준</div>
+            </button>
+            <button class="region-btn" data-region="gangwon" style="padding: 16px; background: rgba(139, 92, 246, 0.2); border: 2px solid #8b5cf6; border-radius: 12px; color: white; cursor: pointer; transition: all 0.2s; font-size: 1em;">
+                <div style="font-weight: bold; margin-bottom: 4px;">강원</div>
+                <div style="font-size: 0.8em; opacity: 0.8;">물류비 반영</div>
+            </button>
+            <button class="region-btn" data-region="chungcheong" style="padding: 16px; background: rgba(16, 185, 129, 0.2); border: 2px solid #10b981; border-radius: 12px; color: white; cursor: pointer; transition: all 0.2s; font-size: 1em;">
+                <div style="font-weight: bold; margin-bottom: 4px;">충청</div>
+                <div style="font-size: 0.8em; opacity: 0.8;">중부권 평균</div>
+            </button>
+            <button class="region-btn" data-region="jeolla" style="padding: 16px; background: rgba(245, 158, 11, 0.2); border: 2px solid #f59e0b; border-radius: 12px; color: white; cursor: pointer; transition: all 0.2s; font-size: 1em;">
+                <div style="font-weight: bold; margin-bottom: 4px;">전라</div>
+                <div style="font-size: 0.8em; opacity: 0.8;">산지 직거래</div>
+            </button>
+            <button class="region-btn" data-region="gyeongsang" style="padding: 16px; background: rgba(239, 68, 68, 0.2); border: 2px solid #ef4444; border-radius: 12px; color: white; cursor: pointer; transition: all 0.2s; font-size: 1em;">
+                <div style="font-weight: bold; margin-bottom: 4px;">경상</div>
+                <div style="font-size: 0.8em; opacity: 0.8;">부산/대구 기준</div>
+            </button>
+            <button class="region-btn" data-region="jeju" style="padding: 16px; background: rgba(6, 182, 212, 0.2); border: 2px solid #06b6d4; border-radius: 12px; color: white; cursor: pointer; transition: all 0.2s; font-size: 1em;">
+                <div style="font-weight: bold; margin-bottom: 4px;">제주</div>
+                <div style="font-size: 0.8em; opacity: 0.8;">도서지역 운송비</div>
+            </button>
+        </div>
+        
+        <button id="cancel-region-select" style="width: 100%; padding: 12px; background: rgba(255,255,255,0.1); border: none; border-radius: 10px; color: white; cursor: pointer; font-size: 0.95em;">
+            취소
+        </button>
+    `;
+    
+    overlay.appendChild(modal);
+    document.body.appendChild(overlay);
+    
+    // Add hover effects
+    const style = document.createElement('style');
+    style.textContent = `
+        .region-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 16px rgba(0,0,0,0.3);
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+    `;
+    document.head.appendChild(style);
+    
+    // Event listeners
+    modal.querySelectorAll('.region-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const regionKey = btn.getAttribute('data-region');
+            const regionInfo = regionalPriceModifiers[regionKey];
+            calculateRevenue(regionInfo);
+            overlay.remove();
+            
+            showNotification(
+                `✅ ${regionInfo.name} 지역 시세로 조회되었습니다!\n\n${regionInfo.description}`,
+                'success'
+            );
+        });
+    });
+    
+    document.getElementById('cancel-region-select').addEventListener('click', () => {
+        overlay.remove();
+    });
 }
 
 // [NEW] Show notification banner
