@@ -147,9 +147,23 @@ function initNavigation() {
             if (mode === 'premium') {
                 isPremiumActive = true;
                 console.log('💎 Premium Mode Activated via Tab');
+                
+                // [FIX] 양액 입력 폼 표시
+                const premiumFields = document.querySelectorAll('.premium-only');
+                premiumFields.forEach(f => {
+                    f.classList.remove('hidden');
+                    console.log('✅ 양액 입력 폼 표시');
+                });
             } else if (mode === 'basic') {
                 isPremiumActive = false;
                 console.log('🌿 Basic Mode Activated via Tab');
+                
+                // [FIX] 양액 입력 폼 숨김
+                const premiumFields = document.querySelectorAll('.premium-only');
+                premiumFields.forEach(f => {
+                    f.classList.add('hidden');
+                    console.log('✅ 양액 입력 폼 숨김');
+                });
             }
 
             if (targetPage) {
