@@ -677,11 +677,12 @@ function initManualEntry() {
             };
 
             // Update Dashboard Display
-            document.getElementById('in-temp').textContent = data.temp;
-            document.getElementById('in-hum').textContent = data.hum;
-            document.getElementById('in-light').textContent = data.light;
-            document.getElementById('in-co2').textContent = data.co2;
-            document.getElementById('in-leaf-temp').textContent = data.leafTemp;
+            // Update Dashboard Display - Disabled as display elements were replaced by input form
+            // document.getElementById('in-temp').textContent = data.temp;
+            // document.getElementById('in-hum').textContent = data.hum;
+            // document.getElementById('in-light').textContent = data.light;
+            // document.getElementById('in-co2').textContent = data.co2;
+            // document.getElementById('in-leaf-temp').textContent = data.leafTemp;
 
             // Perform Scientific Analysis (General Status)
             const analysis = analyzeStatus(data);
