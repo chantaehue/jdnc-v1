@@ -673,15 +673,18 @@ function initManualEntry() {
         try {
             console.log('Starting analysis...', { isPremiumActive });
 
+            const sVal = document.getElementById('select-crop').value;
+            const pVal = document.getElementById('nutrient-crop-select') ? document.getElementById('nutrient-crop-select').value : 'N/A';
+            console.log('DEBUG: Submit Analysis', { isPremiumActive, StandardVals: sVal, PremiumVal: pVal });
+
             const data = {
                 temp: parseFloat(document.getElementById('input-temp').value) || 26.5,
                 hum: parseFloat(document.getElementById('input-hum').value) || 65,
                 light: parseFloat(document.getElementById('input-light').value) || 12000,
                 co2: parseFloat(document.getElementById('input-co2').value) || 450,
                 leafTemp: parseFloat(document.getElementById('input-leaf-temp').value) || 24.8,
-                leafTemp: parseFloat(document.getElementById('input-leaf-temp').value) || 24.8,
+                // ...
 
-                // [Fix] Dynamic Selector Logic (Standard vs Premium)
                 cropId: isPremiumActive
                     ? document.getElementById('nutrient-crop-select').value
                     : document.getElementById('select-crop').value,
@@ -756,9 +759,11 @@ function initManualEntry() {
 function analyzeNutrientSolution(data) {
     const { cropId, standardId, nutrient } = data;
 
-    // Get nutrient crop and standard from dedicated selectors
-    const nutrientCrop = document.getElementById('nutrient-crop-select')?.value || cropId;
-    const nutrientStandard = document.getElementById('nutrient-standard-select')?.value || standardId;
+    // [Fix] Trust the data passed from submit handler (which handles Premium/Standard logic)
+    const nutrientCrop = cropId;
+    const nutrientStandard = standardId;
+
+    console.log(`Analyzing: Crop=${nutrientCrop}, Std=${nutrientStandard}`);
 
     // Get prescription data safely using the advanced prescription database
     let targetData;
