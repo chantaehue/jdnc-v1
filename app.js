@@ -799,34 +799,15 @@ function initManualEntry() {
 
     form.addEventListener('submit', (e) => {
         e.preventDefault();
-        console.log('🔘 Submit event triggered');
-
-        // 즉시 결과 카드 표시
-        const resultCard = document.getElementById('nutrient-solution-card');
-        if (resultCard) {
-            resultCard.classList.remove('hidden');
-            const statusBadge = document.getElementById('nutrient-status-badge');
-            if (statusBadge) {
-                statusBadge.className = 'status-badge healthy';
-                statusBadge.textContent = '분석 완료';
-            }
-            const solutionList = document.getElementById('nutrient-solution-list');
-            if (solutionList) {
-                solutionList.innerHTML = '<li class="solution-success"><i data-lucide="check-circle"></i><span>분석이 완료되었습니다.</span></li>';
-                if (typeof lucide !== 'undefined') lucide.createIcons();
-            }
-            resultCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-            console.log('✅ 결과 표시 완료');
-        }
+        console.log('🔘 분석 버튼 클릭됨');
 
         try {
-
             // [FIX] 현재 활성화된 탭의 모드를 동적으로 확인
             const activeNav = document.querySelector('.nav-item.active[data-page="dashboard"]');
             const currentMode = activeNav ? activeNav.getAttribute('data-mode') : 'basic';
             const isPremiumActive = (currentMode === 'premium');
 
-            console.log('🔬 분석 시작...', { isPremiumActive, currentMode });
+            console.log('🔬 과학적 알고리즘 분석 시작...', { isPremiumActive, currentMode });
 
             // [CRITICAL FIX] 안전한 요소 접근 및 기본값 설정
             const getCropId = () => {
@@ -897,44 +878,33 @@ function initManualEntry() {
 
             console.log('📊 수집된 전체 데이터:', data);
 
-            // Update Dashboard Display
-            // Update Dashboard Display - Disabled as display elements were replaced by input form
-            // document.getElementById('in-temp').textContent = data.temp;
-            // document.getElementById('in-hum').textContent = data.hum;
-            // document.getElementById('in-light').textContent = data.light;
-            // document.getElementById('in-co2').textContent = data.co2;
-            // document.getElementById('in-leaf-temp').textContent = data.leafTemp;
-
-            // Perform Scientific Analysis (General Status)
-            const analysis = analyzeStatus(data);
-
-            try {
-                updateAISolutionPage(analysis);
-            } catch (err) {
-                alert(`❌ updateAISolutionPage 호출 오류: ${err.message}`);
-                console.error('updateAISolutionPage call error:', err);
-            }
-
-            // Perform Detailed Analysis (Greenhouse Only or Premium Nutrient)
+            // [CORE] 과학적 알고리즘 실행
+            console.log('🧪 과학적 알고리즘 분석 실행 중...');
+            
             if (isPremiumActive) {
+                // 프리미엄: 양액 정밀 분석 (작물별 + 처방전별 + 입력데이터 기반)
+                console.log('💎 프리미엄 양액 정밀 분석 시작');
                 if (typeof analyzeNutrientSolution === 'function') {
                     analyzeNutrientSolution(data);
+                    console.log('✅ 프리미엄 양액 정밀 분석 완료');
                 } else {
-                    console.error('analyzeNutrientSolution unreachable');
+                    console.error('❌ analyzeNutrientSolution 함수를 찾을 수 없습니다');
                     throw new Error('프리미엄 분석 함수를 찾을 수 없습니다.');
                 }
             } else {
+                // 베이직: 환경 분석만
+                console.log('🌿 베이직 환경 분석 시작');
                 if (typeof analyzeGreenhouseOnly === 'function') {
                     analyzeGreenhouseOnly(data);
+                    console.log('✅ 베이직 환경 분석 완료');
                 } else {
-                    console.error('analyzeGreenhouseOnly unreachable');
+                    console.error('❌ analyzeGreenhouseOnly 함수를 찾을 수 없습니다');
                     console.warn('온실 분석 함수가 아직 로드되지 않았습니다.');
                     return;
                 }
             }
 
-            console.log('Analysis completed successfully');
-            // alert(`[${data.cropName}] 맞춤형 생육 솔루션이 생성되었습니다.\n하단의 리포트 카드를 확인하세요.`);
+            console.log('🎉 과학적 알고리즘 분석 완료!');
 
         } catch (error) {
             console.error('Analysis execution error:', error);
