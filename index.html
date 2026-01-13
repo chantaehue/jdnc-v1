@@ -859,10 +859,22 @@
 
                     if (mode === 'premium') {
                         // Premium Mode: Show Nutrient Section, Hide Basic Selectors (to match screenshot)
+                        console.log('💎 프리미엄 모드 활성화 (index.html)');
+                        
+                        // [FIX] .hidden 클래스 제거 후 인라인 스타일도 제거 (CSS !important 회피)
                         if (premiumSection) {
                             premiumSection.classList.remove('hidden');
-                            premiumSection.style.display = 'block';
+                            premiumSection.style.display = ''; // 빈 값으로 CSS 기본값 사용
+                            console.log('✅ 양액 섹션 표시:', premiumSection);
                         }
+                        
+                        // 모든 premium-only 요소 표시
+                        document.querySelectorAll('.premium-only').forEach(el => {
+                            el.classList.remove('hidden');
+                            el.style.display = '';
+                            console.log('✅ premium-only 요소 표시');
+                        });
+                        
                         if (mainTitle) mainTitle.textContent = '프리미엄 정밀 관제 (Premium)';
 
                         // Hide Basic Selectors to avoid duplication (Premium uses its own crop selector)
@@ -876,10 +888,14 @@
                         }
                     } else {
                         // Basic Mode: Show Basic Selectors, Hide Nutrient Section
-                        if (premiumSection) {
-                            premiumSection.classList.add('hidden');
-                            premiumSection.style.display = 'none';
-                        }
+                        console.log('🌿 베이직 모드 활성화 (index.html)');
+                        
+                        // [FIX] 모든 premium-only 요소 숨김
+                        document.querySelectorAll('.premium-only').forEach(el => {
+                            el.classList.add('hidden');
+                            console.log('✅ premium-only 요소 숨김');
+                        });
+                        
                         if (mainTitle) mainTitle.textContent = '스마트 팜 통합 관제 (Basic)';
 
                         // Show Basic Selectors
@@ -939,10 +955,10 @@
                 const rootPHEl = document.getElementById('input-root-ph');
                 const drainECEl = document.getElementById('input-drain-ec');
 
-                CEl && inECEl.value ? parseFloat(inECEl.value) : 0;
+                const inEC = inECEl && inECEl.value ? parseFloat(inECEl.value) : 0;
                 const inPH = inPHEl && inPHEl.value ? parseFloat(inPHEl.value) : 0;
                 const rootEC = rootECEl && rootECEl.value ? parseFloat(rootECEl.value) : 0;
-                        && rootPHEl.value ? parseFloat(rootPHEl.value) : 0;
+                const rootPH = rootPHEl && rootPHEl.value ? parseFloat(rootPHEl.value) : 0;
                 const drainEC = drainECEl && drainECEl.value ? parseFloat(drainECEl.value) : 0;
 
                 console.log("양액 데이터:", { inEC, inPH, rootEC, rootPH, drainEC });
@@ -951,7 +967,7 @@
                 const activeNav = document.querySelector('.nav-item.active[data-page="dashboard"]');
                 const currentMode = activeNav ? activeNav.getAttribute('data-mode') : 'basic';
 
-                모드: ", currentMode);
+                console.log("현재 모드:", currentMode);
 
                 // Force Premium if User is in Premium Dashboard (even if inputs are empty)
                 const isNutrientActive = (currentMode === 'premium') || (inEC > 0 || rootEC > 0);
@@ -968,7 +984,8 @@
 
                 // [New] Get Growth Stage
                 const stageSelect = document.getElementById('nutrient-stage-select');
-                const stageKey = stageSelect ? stageSelect.value                  console.log("생육 단계:", stageKey);
+                const stageKey = stageSelect ? stageSelect.value : 'vegetative';
+                console.log("생육 단계:", stageKey);
 
                 // [FIX] 데이터 검증 - 최소한 온도와 습도는 입력되어야 함
                 if (!temp || temp === 0 || isNaN(temp)) {
@@ -1054,17 +1071,17 @@
                                                 🎯 목표 EC: <strong>${targetEC}dS/m</strong>
                                             </span>
                                             <span style="padding: 5px 10px; background: rgba(16, 185, 129, 0.2); border-radius: 4px; border: 1px solid rgba(16, 185, 129, 0.5);">
-                                                 🌱 단계 요인 : ${{ stageFactor }
-                                            </span >
+                                                 🌱 단계 요인: ${stageFactor}
+                                            </span>
                         <span style="padding: 5px 10px; background: rgba(245, 158, 11, 0.2); border-radius: 4px; border: 1px solid rgba(245, 158, 11, 0.5);">
                             🌦️ 환경 요인: ${envCompMessage.length > 0 ? envCompMessage.join(', ') : '보정 없음'}
                         </span>
-                                        </div >
-                                    </div >
-                                </li >
+                                        </div>
+                                    </div>
+                                </li>
                         `;
                         } else {
-                            resultsHTML += `< li style = "padding:10px; border-bottom:1px solid #333; margin-bottom:10px; color:#adfa1d;" > <strong>🌿 BASIC 온실 진단</strong> (Premium 모드에서 정밀 분석 가능)</li > `;
+                            resultsHTML += `<li style="padding:10px; border-bottom:1px solid #333; margin-bottom:10px; color:#adfa1d;"><strong>🌿 BASIC 온실 진단</strong> (Premium 모드에서 정밀 분석 가능)</li>`;
                         }
 
                         // [Analysis Content]
@@ -1075,7 +1092,7 @@
                             // Check if inputs are strictly empty
                             if (inEC === 0 && rootEC === 0 && drainEC === 0) {
                                 resultsHTML += `
-                < li style = "border-left: 4px solid #6366f1; background: rgba(99, 102, 241, 0.1); padding: 12px; border-radius: 4px; margin-bottom: 8px; color: #c4b5fd;" >
+                <li style="border-left: 4px solid #6366f1; background: rgba(99, 102, 241, 0.1); padding: 12px; border-radius: 4px; margin-bottom: 8px; color: #c4b5fd;">
                                         <strong>ℹ️ 양액 데이터 입력 대기중</strong><br>
                                         공급(In), 근권(Root), 배액(Drain)의 EC/pH 데이터를 입력하시면<br>
                                         <strong>${stageDesc.split('(')[0]}</strong> 단계에 맞는 정밀 처방전을 제공합니다.<br>

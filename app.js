@@ -146,23 +146,25 @@ function initNavigation() {
             const mode = item.getAttribute('data-mode');
             if (mode === 'premium') {
                 isPremiumActive = true;
-                console.log('💎 Premium Mode Activated via Tab');
+                console.log('💎 Premium Mode Activated via Tab (app.js)');
                 
-                // [FIX] 양액 입력 폼 표시
+                // [FIX] 양액 입력 폼 표시 (CSS !important 회피)
                 const premiumFields = document.querySelectorAll('.premium-only');
                 premiumFields.forEach(f => {
                     f.classList.remove('hidden');
-                    console.log('✅ 양액 입력 폼 표시');
+                    f.style.display = ''; // 빈 값으로 CSS 기본값 사용
+                    console.log('✅ 양액 입력 폼 표시 (app.js)');
                 });
             } else if (mode === 'basic') {
                 isPremiumActive = false;
-                console.log('🌿 Basic Mode Activated via Tab');
+                console.log('🌿 Basic Mode Activated via Tab (app.js)');
                 
                 // [FIX] 양액 입력 폼 숨김
                 const premiumFields = document.querySelectorAll('.premium-only');
                 premiumFields.forEach(f => {
                     f.classList.add('hidden');
-                    console.log('✅ 양액 입력 폼 숨김');
+                    f.style.display = '';
+                    console.log('✅ 양액 입력 폼 숨김 (app.js)');
                 });
             }
 
