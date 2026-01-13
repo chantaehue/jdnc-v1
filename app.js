@@ -2262,47 +2262,70 @@ async function proceedToMapRegistration(lat, lng, cropId, yieldAmount, regionInf
         return;
     }
 
-    // Get Contact Info (Session -> Firestore -> LocalStorage Fallback)
+    // Get Contact Info & Farm Address (Session -> Firestore -> LocalStorage Fallback)
     let contactNumber = user.contactNumber;
+    let farmAddress = user.farmAddress;
     
     // Try to get from Firestore first
-    if (!contactNumber && typeof db !== 'undefined' && db && user.uid) {
+    if (typeof db !== 'undefined' && db && user.uid) {
         try {
             const userDoc = await db.collection('users').doc(user.uid).get();
             if (userDoc.exists) {
                 const userData = userDoc.data();
-                contactNumber = userData.contactNumber;
-                console.log("✅ Firestore에서 연락처 가져옴:", contactNumber);
+                if (!contactNumber && userData.contactNumber) {
+                    contactNumber = userData.contactNumber;
+                    console.log("✅ Firestore에서 연락처 가져옴:", contactNumber);
+                }
+                if (!farmAddress && userData.farmAddress) {
+                    farmAddress = userData.farmAddress;
+                    console.log("✅ Firestore에서 농장 주소 가져옴:", farmAddress);
+                }
             }
         } catch (e) {
-            console.error("Firestore 연락처 조회 오류:", e);
+            console.error("Firestore 사용자 정보 조회 오류:", e);
         }
     }
     
     // Fallback to localStorage
-    if (!contactNumber) {
+    if (!contactNumber || !farmAddress) {
         try {
             const localUsers = JSON.parse(localStorage.getItem('users') || '[]');
             const matchedUser = localUsers.find(u => u.email === user.email || u.email === user.userId);
-            if (matchedUser && matchedUser.contactNumber) {
-                contactNumber = matchedUser.contactNumber;
-                console.log("✅ localStorage에서 연락처 가져옴:", contactNumber);
+            if (matchedUser) {
+                if (!contactNumber && matchedUser.contactNumber) {
+                    contactNumber = matchedUser.contactNumber;
+                    console.log("✅ localStorage에서 연락처 가져옴:", contactNumber);
+                }
+                if (!farmAddress && matchedUser.farmAddress) {
+                    farmAddress = matchedUser.farmAddress;
+                    console.log("✅ localStorage에서 농장 주소 가져옴:", farmAddress);
+                }
             }
         } catch (e) {
-            console.error("localStorage 연락처 조회 오류:", e);
+            console.error("localStorage 사용자 정보 조회 오류:", e);
         }
     }
     
     if (!contactNumber) {
         console.warn("⚠️ 연락처를 찾을 수 없습니다");
     }
+    if (!farmAddress) {
+        console.warn("⚠️ 농장 주소를 찾을 수 없습니다");
+    }
+    
+    console.log("🔍 최종 사용자 정보:", {
+        contactNumber: contactNumber,
+        farmAddress: farmAddress,
+        userName: user.name,
+        farmName: user.farmName
+    });
 
     // [NEW] 농장 정보 포함
     const farmData = {
         userId: user.uid || user.email,
         userName: user.name || "사용자",
         farmName: user.farmName || "내 스마트팜",
-        farmAddress: user.farmAddress || "주소 미등록", // [NEW] 농장 주소
+        farmAddress: farmAddress || "주소 미등록", // [NEW] 농장 주소
         contact: contactNumber || "연락처 미기재",
         crop: cropId,
         yield: yieldAmount,
@@ -2460,48 +2483,11 @@ function showManualRegionSelector(cropId, yieldAmount) {
     });
 }
 
-// [NEW] Show notification banner
+// [NEW] Show notification banner (완전 무효화 - 알림창 제거)
 function showNotification(message, type = 'info') {
-    // Simple alert for now (can be replaced with toast notification)
-    const icon = type === 'success' ? '✅' : type === 'error' ? '❌' : 'ℹ️';
-    
-    // Create notification element
-    const notification = document.createElement('div');
-    notification.style.cssText = `
-        position: fixed;
-        top: 20px;
-        right: 20px;
-        background: ${type === 'success' ? 'linear-gradient(135deg, #10b981, #059669)' : 'linear-gradient(135deg, #3b82f6, #2563eb)'};
-        color: white;
-        padding: 16px 24px;
-        border-radius: 12px;
-        box-shadow: 0 10px 40px rgba(0,0,0,0.3);
-        z-index: 10000;
-        max-width: 350px;
-        animation: slideIn 0.3s ease-out;
-        white-space: pre-line;
-        font-size: 0.9em;
-        line-height: 1.6;
-    `;
-    notification.innerHTML = message;
-    
-    // Add animation
-    const style = document.createElement('style');
-    style.textContent = `
-        @keyframes slideIn {
-            from { transform: translateX(400px); opacity: 0; }
-            to { transform: translateX(0); opacity: 1; }
-        }
-    `;
-    document.head.appendChild(style);
-    
-    document.body.appendChild(notification);
-    
-    // Auto remove after 4 seconds
-    setTimeout(() => {
-        notification.style.animation = 'slideIn 0.3s ease-out reverse';
-        setTimeout(() => notification.remove(), 300);
-    }, 4000);
+    // 알림창 완전 제거 - 콘솔 로그만
+    console.log(`[알림] ${message}`);
+    // 아무것도 하지 않음
 }
 
 // Format date
