@@ -498,6 +498,18 @@ const nutrientPrescriptions = {
         'yamazaki': { name: '야마자키 (Yamazaki)', ec: 1.2, ph: 6.0, info: '엽채류 전용 저농도 처방입니다.' },
         'utrecht': { name: '위트레흐트 (Utrecht)', ec: 1.4, ph: 6.0, info: '유럽형 상추 재배에 적합합니다.' }
     },
+    melon: {
+        'yamazaki': { name: '야마자키 (Melon)', ec: 2.2, ph: 6.0, info: '멜론 고유의 향과 당도를 높이는 처방입니다.' },
+        'netherlands': { name: '네덜란드 (PBG)', ec: 2.5, ph: 5.5, info: '네트 형성기 이후 EC 관리가 중요합니다.' }
+    },
+    eggplant: {
+        'yamazaki': { name: '야마자키 (Eggplant)', ec: 2.0, ph: 5.8, info: '가지 생육에 최적화된 칼륨 균형 처방입니다.' },
+        'netherlands': { name: '네덜란드 (PBG)', ec: 2.6, ph: 5.5, info: '수확기 다수확을 위한 고농도 처방입니다.' }
+    },
+    leafy: {
+        'yamazaki': { name: '야마자키 (Leafy)', ec: 1.3, ph: 6.0, info: '일반 엽채류 범용 처방입니다.' },
+        'korea_common': { name: '국내 표준', ec: 1.5, ph: 5.8, info: '국내 엽채류 재배 환경에 맞춘 처방입니다.' }
+    },
     // Fallback for other crops
     default: {
         'yamazaki': { name: '야마자키 (Standard)', ec: 1.5, ph: 6.0, info: '범용 야마자키 처방입니다.' },
