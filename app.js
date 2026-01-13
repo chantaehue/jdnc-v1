@@ -636,6 +636,17 @@ function initPremium() {
 
         alert('프리미엄 양액 분석 서비스가 활성화되었습니다!');
         lucide.createIcons();
+
+        // [UX Fix] Sync Standard Crop to Premium Crop
+        const standardCrop = document.getElementById('select-crop');
+        const premiumCrop = document.getElementById('nutrient-crop-select');
+        if (standardCrop && premiumCrop) {
+            premiumCrop.value = standardCrop.value;
+            // Keep them in sync
+            standardCrop.addEventListener('change', () => {
+                premiumCrop.value = standardCrop.value;
+            });
+        }
     });
 }
 
