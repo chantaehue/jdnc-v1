@@ -142,6 +142,16 @@ function initNavigation() {
 
             const targetPage = document.getElementById(targetPageId);
 
+            // [Fix] Sync isPremiumActive with data-mode for Analysis logic
+            const mode = item.getAttribute('data-mode');
+            if (mode === 'premium') {
+                isPremiumActive = true;
+                console.log('💎 Premium Mode Activated via Tab');
+            } else if (mode === 'basic') {
+                isPremiumActive = false;
+                console.log('🌿 Basic Mode Activated via Tab');
+            }
+
             if (targetPage) {
                 navItems.forEach(i => i.classList.remove('active'));
                 item.classList.add('active');
@@ -1988,6 +1998,12 @@ function checkUserRoleUI() {
         if (nameEl) nameEl.textContent = user.name;
         if (farmEl) farmEl.textContent = user.farmName;
 
+        // [Fix] Initialize isPremiumActive for Premium/Admin users
+        if (user.role === 'premium' || user.role === 'admin') {
+            isPremiumActive = true;
+            console.log('💎 Premium session initialized from user role');
+        }
+
         // Check Admin
         // Check Admin
         const adminNav = document.getElementById('admin-nav-item');
@@ -2237,6 +2253,16 @@ function initBottomNavigation() {
                     navItem.classList.add('active');
                 }
             });
+
+            // [Fix] Sync isPremiumActive with data-mode for Analysis logic
+            const mode = item.getAttribute('data-mode');
+            if (mode === 'premium') {
+                isPremiumActive = true;
+                console.log('💎 Premium Mode Activated via Bottom Nav');
+            } else if (mode === 'basic') {
+                isPremiumActive = false;
+                console.log('🌿 Basic Mode Activated via Bottom Nav');
+            }
 
             // Switch page
             const targetPageId = `${pageName}-page`;
