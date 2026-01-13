@@ -227,6 +227,11 @@
         box-sizing: border-box !important;
     }
 
+    #notice-preview-content {
+        max-height: none !important;
+        overflow-y: visible !important;
+    }
+
     /* [Mobile] Main Content Layout Fix */
     .main-content {
         padding-left: 15px !important;
