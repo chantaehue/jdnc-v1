@@ -341,7 +341,7 @@ async function fetchWeatherData(lat, lon) {
 }
 
 // Scientific Analysis Logic
-// Market Data Simulator
+// Market Data Simulator - 전국 기준 (서울 가락시장)
 const marketPriceData = {
     strawberry: { wholesale: 35000, retail: 48000 },
     tomato: { wholesale: 18000, retail: 25000 },
@@ -352,6 +352,50 @@ const marketPriceData = {
     leafy: { wholesale: 5000, retail: 9000 },
     melon: { wholesale: 45000, retail: 60000 }
 };
+
+// [NEW] 지역별 시세 변동률 (%)
+const regionalPriceModifiers = {
+    seoul: { name: "서울/경기", modifier: 1.0, description: "가락시장 기준" },
+    gangwon: { name: "강원", modifier: 0.92, description: "물류비 반영" },
+    chungcheong: { name: "충청", modifier: 0.95, description: "중부권 평균" },
+    jeolla: { name: "전라", modifier: 0.88, description: "산지 직거래" },
+    gyeongsang: { name: "경상", modifier: 0.90, description: "부산/대구 기준" },
+    jeju: { name: "제주", modifier: 1.05, description: "도서지역 운송비" }
+};
+
+// [NEW] 좌표 기반 지역 판별 함수
+function getRegionFromCoordinates(lat, lng) {
+    console.log("📍 위치 판별:", { lat, lng });
+    
+    // 한국 주요 지역 좌표 범위
+    // 서울/경기: 37.2~37.7, 126.7~127.3
+    if (lat >= 37.2 && lat <= 37.7 && lng >= 126.7 && lng <= 127.3) {
+        return regionalPriceModifiers.seoul;
+    }
+    // 강원: 37.3~38.6, 127.5~129.0
+    if (lat >= 37.3 && lat <= 38.6 && lng >= 127.5 && lng <= 129.0) {
+        return regionalPriceModifiers.gangwon;
+    }
+    // 충청: 36.0~37.0, 126.3~128.0
+    if (lat >= 36.0 && lat <= 37.0 && lng >= 126.3 && lng <= 128.0) {
+        return regionalPriceModifiers.chungcheong;
+    }
+    // 전라: 34.5~36.0, 126.0~127.5
+    if (lat >= 34.5 && lat <= 36.0 && lng >= 126.0 && lng <= 127.5) {
+        return regionalPriceModifiers.jeolla;
+    }
+    // 경상: 34.6~36.8, 127.5~129.5
+    if (lat >= 34.6 && lat <= 36.8 && lng >= 127.5 && lng <= 129.5) {
+        return regionalPriceModifiers.gyeongsang;
+    }
+    // 제주: 33.0~34.0, 126.0~127.0
+    if (lat >= 33.0 && lat <= 34.0 && lng >= 126.0 && lng <= 127.0) {
+        return regionalPriceModifiers.jeju;
+    }
+    
+    // 기본값 (서울)
+    return regionalPriceModifiers.seoul;
+}
 
 let marketChart = null;
 
@@ -1211,7 +1255,7 @@ function initHarvestRegistration() {
     const retailRevenueEl = document.getElementById('retail-revenue');
     const revenuePredictions = document.getElementById('revenue-predictions');
 
-    function calculateRevenue() {
+    function calculateRevenue(regionInfo = null) {
         const cropId = marketCropSelect.value;
         const yieldAmount = parseFloat(yieldAmountInput.value) || 0;
 
@@ -1223,18 +1267,74 @@ function initHarvestRegistration() {
             return;
         }
 
-        const prices = marketPriceData[cropId] || marketPriceData.strawberry;
-        const wholesaleRevenue = Math.round(yieldAmount * prices.wholesale);
-        const retailRevenue = Math.round(yieldAmount * prices.retail);
+        // [NEW] 지역별 시세 적용
+        const basePrice = marketPriceData[cropId] || marketPriceData.strawberry;
+        const modifier = regionInfo ? regionInfo.modifier : 1.0;
+        
+        const adjustedWholesale = Math.round(basePrice.wholesale * modifier);
+        const adjustedRetail = Math.round(basePrice.retail * modifier);
+        
+        const wholesaleRevenue = Math.round(yieldAmount * adjustedWholesale);
+        const retailRevenue = Math.round(yieldAmount * adjustedRetail);
 
-        if (wholesaleRevenueEl) wholesaleRevenueEl.textContent = wholesaleRevenue.toLocaleString() + '원';
-        if (retailRevenueEl) retailRevenueEl.textContent = retailRevenue.toLocaleString() + '원';
+        console.log("💰 시세 계산:", {
+            지역: regionInfo ? regionInfo.name : "전국 평균",
+            변동률: modifier,
+            도매가: adjustedWholesale,
+            소매가: adjustedRetail
+        });
+
+        if (wholesaleRevenueEl) {
+            wholesaleRevenueEl.textContent = wholesaleRevenue.toLocaleString() + '원';
+            // 지역 정보 표시
+            if (regionInfo) {
+                wholesaleRevenueEl.setAttribute('title', `${regionInfo.name} 지역 도매가: ${adjustedWholesale.toLocaleString()}원/kg`);
+            }
+        }
+        if (retailRevenueEl) {
+            retailRevenueEl.textContent = retailRevenue.toLocaleString() + '원';
+            if (regionInfo) {
+                retailRevenueEl.setAttribute('title', `${regionInfo.name} 지역 소매가: ${adjustedRetail.toLocaleString()}원/kg`);
+            }
+        }
 
         // Show predictions if hidden
-        // Use timeout to ensure DOM update if needed, but usually immediate
         if (revenuePredictions) {
             revenuePredictions.classList.remove('hidden');
             revenuePredictions.style.setProperty('display', 'flex', 'important');
+            
+            // [NEW] 지역 정보 배너 추가
+            let regionBanner = document.getElementById('region-info-banner');
+            if (!regionBanner) {
+                regionBanner = document.createElement('div');
+                regionBanner.id = 'region-info-banner';
+                regionBanner.style.cssText = `
+                    background: linear-gradient(135deg, #1e293b, #334155);
+                    color: #e2e8f0;
+                    padding: 12px 16px;
+                    border-radius: 8px;
+                    margin-bottom: 12px;
+                    font-size: 0.9em;
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                    border-left: 4px solid #10b981;
+                `;
+                revenuePredictions.parentElement.insertBefore(regionBanner, revenuePredictions);
+            }
+            
+            if (regionInfo) {
+                regionBanner.innerHTML = `
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"></path><circle cx="12" cy="10" r="3"></circle></svg>
+                    <div>
+                        <strong>${regionInfo.name} 지역</strong> 시세 적용 
+                        <span style="color: #94a3b8; margin-left: 8px;">${regionInfo.description}</span>
+                    </div>
+                `;
+                regionBanner.style.display = 'flex';
+            } else {
+                regionBanner.style.display = 'none';
+            }
         }
     }
 
@@ -1247,35 +1347,53 @@ function initHarvestRegistration() {
             return;
         }
 
-        // 1. Calculate and Show Revenue First
-        calculateRevenue();
-
-        // 2. Get User Info
-        const user = getCurrentUser();
-        if (!user) {
-            // Logged out but still checking price? Allowed.
-            // But Map Registration needs login.
-            if (confirm("지도 등록을 위해서는 로그인이 필요합니다.\n로그인 페이지로 이동하시겠습니까?")) {
-                window.location.href = 'login.html';
-            }
-            return;
-        }
-
-        // 3. Get Geolocation
+        // [NEW] 1. Get Geolocation FIRST for regional pricing
         if (!navigator.geolocation) {
-            alert("브라우저가 위치 정보를 지원하지 않습니다.");
+            alert("브라우저가 위치 정보를 지원하지 않습니다.\n전국 평균 시세로 조회합니다.");
+            calculateRevenue(); // Fallback to default pricing
             return;
         }
 
         registerBtn.disabled = true;
-        registerBtn.innerHTML = '<i data-lucide="loader"></i> 조회 중...';
+        registerBtn.innerHTML = '<i data-lucide="loader"></i> 위치 확인 중...';
         lucide.createIcons();
 
         navigator.geolocation.getCurrentPosition(async (position) => {
             const lat = position.coords.latitude;
             const lng = position.coords.longitude;
+            
+            console.log("📍 위치 정보 획득:", { lat, lng });
+            
+            // [NEW] 지역 판별 및 지역별 시세 계산
+            const regionInfo = getRegionFromCoordinates(lat, lng);
+            console.log("🌍 지역 판별 결과:", regionInfo);
+            
+            // 지역별 시세로 수익 계산
+            calculateRevenue(regionInfo);
+            
+            registerBtn.innerHTML = '<i data-lucide="loader"></i> 등록 중...';
+            lucide.createIcons();
 
-            // Get Contact Info (Session -> LocalStorage Fallback)
+            // 2. Get User Info
+            const user = getCurrentUser();
+            if (!user) {
+                // 로그인 없이 시세만 조회하는 경우
+                registerBtn.disabled = false;
+                registerBtn.innerHTML = '<i data-lucide="search"></i> 시세 조회';
+                lucide.createIcons();
+                
+                console.log("💡 비로그인 사용자 - 시세만 표시");
+                
+                // 지도 등록 안내
+                setTimeout(() => {
+                    if (confirm("📍 지도에 수확량을 등록하시겠습니까?\n(로그인이 필요합니다)")) {
+                        window.location.href = 'login.html';
+                    }
+                }, 500);
+                return;
+            }
+
+            // 3. Get Contact Info (Session -> LocalStorage Fallback)
             let contactNumber = user.contactNumber;
             if (!contactNumber) {
                 try {
@@ -1287,6 +1405,7 @@ function initHarvestRegistration() {
                 }
             }
 
+            // [NEW] 4. 지역 정보 추가
             const farmData = {
                 userId: user.uid || user.email,
                 userName: user.name || "사용자",
@@ -1295,6 +1414,8 @@ function initHarvestRegistration() {
                 crop: cropId,
                 yield: yieldAmount,
                 location: [lat, lng],
+                region: regionInfo.name, // 지역명 추가
+                regionModifier: regionInfo.modifier, // 시세 변동률
                 timestamp: new Date().toISOString(),
                 expiresAt: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString() // 3 days
             };
@@ -1314,8 +1435,18 @@ function initHarvestRegistration() {
                 localFarms.push(farmData);
                 localStorage.setItem('active_farms', JSON.stringify(localFarms));
 
-                // Success Message
-                // alert(`[${getCropName(cropId)}] 시세 조회 완료 및 지도 등록 성공!`);
+                // [NEW] Success Message with region info
+                console.log("✅ 지도 등록 완료:", farmData);
+                
+                // Show success notification
+                showNotification(
+                    `✅ 시세 조회 및 지도 등록 완료!\n\n` +
+                    `📍 지역: ${regionInfo.name}\n` +
+                    `🌾 작물: ${getCropName(cropId)}\n` +
+                    `📦 수확량: ${yieldAmount}kg\n\n` +
+                    `관리자 모드에서 확인하실 수 있습니다.`,
+                    'success'
+                );
 
             } catch (error) {
                 console.error("Map Registration Error:", error);
@@ -1328,14 +1459,33 @@ function initHarvestRegistration() {
 
         }, (error) => {
             console.error("Geolocation Error:", error);
-            alert("위치 정보를 가져올 수 없어 지도 등록은 생략합니다.\n시세 정보만 표시됩니다.");
+            
+            let errorMsg = "위치 정보를 가져올 수 없습니다.\n";
+            switch(error.code) {
+                case error.PERMISSION_DENIED:
+                    errorMsg += "위치 권한이 거부되었습니다.\n브라우저 설정에서 위치 권한을 허용해주세요.";
+                    break;
+                case error.POSITION_UNAVAILABLE:
+                    errorMsg += "위치 정보를 사용할 수 없습니다.";
+                    break;
+                case error.TIMEOUT:
+                    errorMsg += "위치 정보 요청 시간이 초과되었습니다.";
+                    break;
+            }
+            errorMsg += "\n\n전국 평균 시세로 조회합니다.";
+            
+            alert(errorMsg);
+            
+            // Fallback: 전국 평균 시세로 계산
+            calculateRevenue();
+            
             registerBtn.disabled = false;
             registerBtn.innerHTML = '<i data-lucide="search"></i> 시세 조회';
             lucide.createIcons();
         }, {
-            enableHighAccuracy: true,
-            timeout: 5000,
-            maximumAge: 60000 // Allow cached position (1 min) for speed
+            enableHighAccuracy: true, // GPS 사용
+            timeout: 10000, // 10초로 증가
+            maximumAge: 300000 // 5분까지 캐시 허용
         });
     }
 
@@ -1635,19 +1785,40 @@ function addFarmMarker(farmData) {
         lng = farmData.location.lng;
     }
 
+    // [NEW] 지역별 마커 색상
+    const regionColors = {
+        '서울/경기': '#3b82f6', // 파랑
+        '강원': '#8b5cf6',       // 보라
+        '충청': '#10b981',       // 초록
+        '전라': '#f59e0b',       // 주황
+        '경상': '#ef4444',       // 빨강
+        '제주': '#06b6d4',       // 청록
+    };
+    
+    const markerColor = farmData.region ? (regionColors[farmData.region] || '#10b981') : '#10b981';
+    
     // Create CircleMarker (similar to Google Maps circle icon)
     const marker = L.circleMarker([lat, lng], {
         radius: 10,
-        fillColor: '#10b981',
+        fillColor: markerColor,
         fillOpacity: 0.8,
-        color: '#059669',
+        color: markerColor,
         weight: 2
     }).addTo(map);
 
+    // [NEW] 지역 정보 추가
+    const regionInfo = farmData.region ? `
+        <p style="margin:4px 0; color:#10b981; font-weight: 600;">
+            📍 <strong>지역:</strong> ${farmData.region}
+            ${farmData.regionModifier ? `(시세 변동률: ${Math.round(farmData.regionModifier * 100)}%)` : ''}
+        </p>
+    ` : '';
+    
     // Create popup content (replaces InfoWindow)
     const popupContent = `
         <div class="map-info-window">
             <h4 style="color:#1e293b; margin:0 0 8px 0;">${farmData.farmName}</h4>
+            ${regionInfo}
             <p style="margin:4px 0; color:#475569;"><strong>작물:</strong> ${getCropName(farmData.crop)}</p>
             <p style="margin:4px 0; color:#475569;"><strong>수확량:</strong> ${farmData.yield} kg</p>
             <p style="margin:4px 0; color:#475569;"><strong>등록자:</strong> ${farmData.userName}</p>
@@ -1680,6 +1851,13 @@ function updateFarmList(farmData) {
                 <span class="farm-name">${farm.farmName}</span>
                 <span class="farm-time">${getTimeAgo(farm.timestamp)}</span>
             </div>
+            ${farm.region ? `
+            <div class="farm-region-badge" style="background: linear-gradient(135deg, #10b981, #059669); color: white; padding: 6px 12px; border-radius: 6px; margin: 8px 0; font-size: 0.85em; display: flex; align-items: center; gap: 6px;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"></path><circle cx="12" cy="10" r="3"></circle></svg>
+                <strong>${farm.region}</strong>
+                ${farm.regionModifier ? `<span style="opacity: 0.8;">(시세 ${Math.round(farm.regionModifier * 100)}%)</span>` : ''}
+            </div>
+            ` : ''}
             <div class="farm-info">
                 <div class="farm-info-item">
                     <i data-lucide="sprout"></i>
@@ -1722,6 +1900,50 @@ function getCropName(cropValue) {
         'melon': '멜론'
     };
     return cropNames[cropValue] || cropValue;
+}
+
+// [NEW] Show notification banner
+function showNotification(message, type = 'info') {
+    // Simple alert for now (can be replaced with toast notification)
+    const icon = type === 'success' ? '✅' : type === 'error' ? '❌' : 'ℹ️';
+    
+    // Create notification element
+    const notification = document.createElement('div');
+    notification.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: ${type === 'success' ? 'linear-gradient(135deg, #10b981, #059669)' : 'linear-gradient(135deg, #3b82f6, #2563eb)'};
+        color: white;
+        padding: 16px 24px;
+        border-radius: 12px;
+        box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+        z-index: 10000;
+        max-width: 350px;
+        animation: slideIn 0.3s ease-out;
+        white-space: pre-line;
+        font-size: 0.9em;
+        line-height: 1.6;
+    `;
+    notification.innerHTML = message;
+    
+    // Add animation
+    const style = document.createElement('style');
+    style.textContent = `
+        @keyframes slideIn {
+            from { transform: translateX(400px); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+    `;
+    document.head.appendChild(style);
+    
+    document.body.appendChild(notification);
+    
+    // Auto remove after 4 seconds
+    setTimeout(() => {
+        notification.style.animation = 'slideIn 0.3s ease-out reverse';
+        setTimeout(() => notification.remove(), 300);
+    }, 4000);
 }
 
 // Format date
