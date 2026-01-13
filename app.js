@@ -1270,6 +1270,10 @@ function initHarvestRegistration() {
             registerBtn.disabled = false;
             registerBtn.innerHTML = '<i data-lucide="search"></i> 시세 조회';
             lucide.createIcons();
+        }, {
+            enableHighAccuracy: true,
+            timeout: 10000,
+            maximumAge: 0
         });
     }
 
