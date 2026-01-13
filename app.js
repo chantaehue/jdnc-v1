@@ -656,9 +656,19 @@ function initManualEntry() {
                 light: parseFloat(document.getElementById('input-light').value) || 12000,
                 co2: parseFloat(document.getElementById('input-co2').value) || 450,
                 leafTemp: parseFloat(document.getElementById('input-leaf-temp').value) || 24.8,
-                cropId: document.getElementById('select-crop').value,
-                standardId: document.getElementById('select-standard').value,
-                cropName: document.getElementById('select-crop').options[document.getElementById('select-crop').selectedIndex].text,
+                leafTemp: parseFloat(document.getElementById('input-leaf-temp').value) || 24.8,
+
+                // [Fix] Dynamic Selector Logic (Standard vs Premium)
+                cropId: isPremiumActive
+                    ? document.getElementById('nutrient-crop-select').value
+                    : document.getElementById('select-crop').value,
+                standardId: isPremiumActive
+                    ? document.getElementById('nutrient-standard-select').value
+                    : document.getElementById('select-standard').value,
+                cropName: isPremiumActive
+                    ? document.getElementById('nutrient-crop-select').options[document.getElementById('nutrient-crop-select').selectedIndex].text
+                    : document.getElementById('select-crop').options[document.getElementById('select-crop').selectedIndex].text,
+
                 nutrient: {
                     active: isPremiumActive,
                     in: {
