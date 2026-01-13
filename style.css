@@ -29,12 +29,8 @@ body {
     background-color: var(--bg-dark);
     color: var(--text-main);
     overflow-x: hidden;
-    background-image:
-        linear-gradient(rgba(15, 23, 42, 0.85), rgba(15, 23, 42, 0.85)),
-        url('/Users/jeontaehwi/.gemini/antigravity/brain/b84491c7-f2d1-492f-a2fe-af7d97e6e4c6/greenhouse_hero_background_1768125312193.png');
-    background-size: cover;
-    background-position: center;
-    background-attachment: fixed;
+    background-color: var(--bg-dark);
+    /* background-image 제거됨 */
     min-height: 100vh;
 }
 

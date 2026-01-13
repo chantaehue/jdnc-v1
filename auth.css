@@ -23,13 +23,13 @@
 
 body {
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-    background: linear-gradient(135deg, var(--bg-darker) 0%, var(--bg-dark) 100%);
+    background-color: var(--bg-dark);
+    /* background: linear-gradient(...) 제거 */
     color: var(--text-primary);
     min-height: 100vh;
     display: flex;
     align-items: center;
     justify-content: center;
-    /* overflow: hidden;  <-- REMOVED */
     overflow-y: auto;
     /* Allow scrolling */
     position: relative;
@@ -37,8 +37,9 @@ body {
     /* Add top/bottom padding for small screens */
 }
 
-/* Background Animation */
+/* Background Animation - Hidden for simpler look */
 .auth-background {
+    display: none;
     position: fixed;
     top: 0;
     left: 0;
