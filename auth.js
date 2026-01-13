@@ -155,10 +155,13 @@ function initSignupForm() {
         const name = document.getElementById('name').value.trim();
         const email = document.getElementById('email').value.trim();
         const farmName = document.getElementById('farm-name').value.trim();
+        const mainCrop = document.getElementById('main-crop').value.trim();
+        const farmAddress = document.getElementById('farm-address').value.trim();
+        const contactNumber = document.getElementById('contact-number').value.trim();
         const password = document.getElementById('password').value;
         const confirmPassword = document.getElementById('confirm-password').value;
 
-        if (!name || !email || !password || !confirmPassword) {
+        if (!name || !email || !password || !confirmPassword || !mainCrop || !farmAddress || !contactNumber) {
             showError(errorMessage, '필수 항목을 모두 입력해주세요.');
             return;
         }
@@ -185,6 +188,9 @@ function initSignupForm() {
                         name: name,
                         email: email,
                         farmName: farmName || '내 스마트팜',
+                        mainCrop: mainCrop,
+                        farmAddress: farmAddress,
+                        contactNumber: contactNumber,
                         role: 'member',
                         createdAt: new Date().toISOString()
                     });
@@ -212,6 +218,9 @@ function initSignupForm() {
             name: name,
             email: email,
             farmName: farmName || '내 스마트팜',
+            mainCrop: mainCrop,
+            farmAddress: farmAddress,
+            contactNumber: contactNumber,
             password: password,
             createdAt: new Date().toISOString()
         };
