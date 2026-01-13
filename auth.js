@@ -127,6 +127,8 @@ function initLoginForm() {
             email: user.email,
             name: user.name,
             farmName: user.farmName,
+            farmLocation: user.farmLocation, // [NEW] 농장 위치 좌표
+            farmAddress: user.farmAddress, // [NEW] 농장 주소
             loginTime: new Date().toISOString(),
             contactNumber: user.contactNumber, // Include contact info
             rememberMe: rememberMe
@@ -183,7 +185,11 @@ function initSignupForm() {
                     displayName: name
                 });
 
-                // 3. Save Extra Data to Firestore
+                // 3. Parse Address to Coordinates
+                const farmCoordinates = parseAddressToCoordinates(farmAddress);
+                console.log("농장 주소 파싱:", { address: farmAddress, coordinates: farmCoordinates });
+
+                // 4. Save Extra Data to Firestore
                 if (typeof db !== 'undefined' && db) {
                     await db.collection('users').doc(user.uid).set({
                         name: name,
@@ -191,6 +197,7 @@ function initSignupForm() {
                         farmName: farmName || '내 스마트팜',
                         mainCrop: mainCrop,
                         farmAddress: farmAddress,
+                        farmLocation: farmCoordinates, // [NEW] 농장 위치 좌표
                         contactNumber: contactNumber,
                         role: 'member',
                         createdAt: new Date().toISOString()
@@ -214,6 +221,10 @@ function initSignupForm() {
             return;
         }
 
+        // Parse Address to Coordinates
+        const farmCoordinates = parseAddressToCoordinates(farmAddress);
+        console.log("농장 주소 파싱 (Local):", { address: farmAddress, coordinates: farmCoordinates });
+
         const newUser = {
             id: Date.now().toString(),
             name: name,
@@ -221,6 +232,7 @@ function initSignupForm() {
             farmName: farmName || '내 스마트팜',
             mainCrop: mainCrop,
             farmAddress: farmAddress,
+            farmLocation: farmCoordinates, // [NEW] 농장 위치 좌표
             contactNumber: contactNumber,
             password: password,
             createdAt: new Date().toISOString()
@@ -234,6 +246,105 @@ function initSignupForm() {
             window.location.href = 'login.html';
         }, 2000);
     });
+}
+
+// [NEW] Parse Address to Coordinates
+function parseAddressToCoordinates(address) {
+    // 주소에서 지역을 추출하여 대표 좌표 반환
+    const addressLower = address.toLowerCase().replace(/\s/g, '');
+    
+    // 시/도별 대표 좌표 (각 지역의 중심부)
+    const regionCoordinates = {
+        // 서울/경기
+        '서울': [37.5665, 126.9780],
+        '경기': [37.4138, 127.5183],
+        '인천': [37.4563, 126.7052],
+        '수원': [37.2636, 127.0286],
+        '이천': [37.2725, 127.4350],
+        '용인': [37.2411, 127.1776],
+        '화성': [37.2000, 126.8312],
+        '평택': [36.9921, 127.1129],
+        '안성': [37.0078, 127.2797],
+        '여주': [37.2982, 127.6378],
+        '양평': [37.4912, 127.4877],
+        
+        // 강원
+        '강원': [37.8228, 128.1555],
+        '춘천': [37.8813, 127.7298],
+        '원주': [37.3422, 127.9202],
+        '강릉': [37.7519, 128.8761],
+        '속초': [38.2070, 128.5918],
+        '횡성': [37.4828, 127.9857],
+        '홍천': [37.6969, 127.8878],
+        '평창': [37.3708, 128.3906],
+        
+        // 충청
+        '충북': [36.6357, 127.4917],
+        '충남': [36.5184, 126.8000],
+        '충청': [36.6357, 127.4917],
+        '대전': [36.3504, 127.3845],
+        '세종': [36.4800, 127.2890],
+        '청주': [36.6424, 127.4890],
+        '천안': [36.8151, 127.1139],
+        '공주': [36.4465, 127.1189],
+        '아산': [36.7898, 127.0019],
+        '서산': [36.7847, 126.4503],
+        '당진': [36.8930, 126.6475],
+        '충주': [36.9910, 127.9260],
+        '제천': [37.1326, 128.1910],
+        
+        // 전라
+        '전북': [35.7175, 127.1530],
+        '전남': [34.8679, 126.9910],
+        '전라': [35.7175, 127.1530],
+        '광주': [35.1595, 126.8526],
+        '전주': [35.8242, 127.1479],
+        '군산': [35.9676, 126.7369],
+        '익산': [35.9483, 126.9575],
+        '목포': [34.7934, 126.3886],
+        '여수': [34.7604, 127.6622],
+        '순천': [34.9506, 127.4872],
+        '나주': [35.0160, 126.7107],
+        '담양': [35.3211, 126.9881],
+        '고흥': [34.6114, 127.2752],
+        
+        // 경상
+        '경북': [36.4919, 128.8889],
+        '경남': [35.4606, 128.2132],
+        '경상': [36.4919, 128.8889],
+        '부산': [35.1796, 129.0756],
+        '대구': [35.8714, 128.6014],
+        '울산': [35.5384, 129.3114],
+        '포항': [36.0190, 129.3435],
+        '경주': [35.8562, 129.2247],
+        '김해': [35.2284, 128.8889],
+        '안동': [36.5684, 128.7294],
+        '구미': [36.1195, 128.3445],
+        '진주': [35.1800, 128.1076],
+        '통영': [34.8544, 128.4331],
+        '창원': [35.2280, 128.6811],
+        '거제': [34.8806, 128.6211],
+        '밀양': [35.5030, 128.7469],
+        '양산': [35.3350, 129.0373],
+        
+        // 제주
+        '제주': [33.4996, 126.5312],
+        '서귀포': [33.2541, 126.5601]
+    };
+    
+    // 주소에서 지역명 매칭 (긴 지역명부터 매칭)
+    const sortedRegions = Object.entries(regionCoordinates).sort((a, b) => b[0].length - a[0].length);
+    
+    for (const [region, coords] of sortedRegions) {
+        if (addressLower.includes(region)) {
+            console.log(`✅ 지역 매칭: ${region} →`, coords);
+            return coords;
+        }
+    }
+    
+    // 기본값: 서울 (매칭 실패 시)
+    console.log('⚠️ 지역 매칭 실패, 기본값(서울) 사용:', address);
+    return [37.5665, 126.9780];
 }
 
 // Helper Functions

@@ -1347,7 +1347,44 @@ function initHarvestRegistration() {
             return;
         }
 
-        // [NEW] 1. Check Geolocation Support
+        // [NEW] 1. Check if user has registered farm location
+        const user = getCurrentUser();
+        if (user && user.farmLocation && Array.isArray(user.farmLocation) && user.farmLocation.length === 2) {
+            console.log("✅ 등록된 농장 위치 사용:", user.farmLocation);
+            
+            registerBtn.disabled = true;
+            registerBtn.innerHTML = '<i data-lucide="loader"></i> 조회 중...';
+            lucide.createIcons();
+            
+            // Use registered farm location
+            const [lat, lng] = user.farmLocation;
+            const regionInfo = getRegionFromCoordinates(lat, lng);
+            console.log("🌍 농장 주소 기반 지역:", regionInfo, "주소:", user.farmAddress);
+            
+            // Calculate revenue with region info
+            calculateRevenue(regionInfo);
+            
+            // Show info notification
+            showNotification(
+                `📍 등록된 농장 위치 기반 시세\n\n` +
+                `농장 주소: ${user.farmAddress || '정보 없음'}\n` +
+                `지역: ${regionInfo.name}\n` +
+                `${regionInfo.description}`,
+                'success'
+            );
+            
+            // If logged in, proceed to map registration
+            if (user.uid) {
+                proceedToMapRegistration(lat, lng, cropId, yieldAmount, regionInfo);
+            } else {
+                registerBtn.disabled = false;
+                registerBtn.innerHTML = '<i data-lucide="search"></i> 시세 조회';
+                lucide.createIcons();
+            }
+            return;
+        }
+
+        // [NEW] 2. Check Geolocation Support (GPS fallback)
         if (!navigator.geolocation) {
             if (confirm("브라우저가 위치 정보를 지원하지 않습니다.\n\n수동으로 지역을 선택하시겠습니까?")) {
                 showManualRegionSelector(cropId, yieldAmount);
@@ -1357,7 +1394,7 @@ function initHarvestRegistration() {
             return;
         }
 
-        // [NEW] 2. Request Location Permission Aggressively
+        // [NEW] 3. Request GPS Location (if no registered location)
         registerBtn.disabled = true;
         registerBtn.innerHTML = '<i data-lucide="loader"></i> 위치 확인 중...';
         lucide.createIcons();
@@ -1369,36 +1406,17 @@ function initHarvestRegistration() {
             const lat = position.coords.latitude;
             const lng = position.coords.longitude;
             
-            console.log("📍 위치 정보 획득:", { lat, lng });
+            console.log("📍 GPS 위치 정보 획득:", { lat, lng });
             
             // [NEW] 지역 판별 및 지역별 시세 계산
             const regionInfo = getRegionFromCoordinates(lat, lng);
-            console.log("🌍 지역 판별 결과:", regionInfo);
+            console.log("🌍 GPS 기반 지역 판별:", regionInfo);
             
             // 지역별 시세로 수익 계산
             calculateRevenue(regionInfo);
             
-            registerBtn.innerHTML = '<i data-lucide="loader"></i> 등록 중...';
-            lucide.createIcons();
-
-            // 2. Get User Info
-            const user = getCurrentUser();
-            if (!user) {
-                // 로그인 없이 시세만 조회하는 경우
-                registerBtn.disabled = false;
-                registerBtn.innerHTML = '<i data-lucide="search"></i> 시세 조회';
-                lucide.createIcons();
-                
-                console.log("💡 비로그인 사용자 - 시세만 표시");
-                
-                // 지도 등록 안내
-                setTimeout(() => {
-                    if (confirm("📍 지도에 수확량을 등록하시겠습니까?\n(로그인이 필요합니다)")) {
-                        window.location.href = 'login.html';
-                    }
-                }, 500);
-                return;
-            }
+            // Proceed to map registration
+            proceedToMapRegistration(lat, lng, cropId, yieldAmount, regionInfo);
 
             // 3. Get Contact Info (Session -> LocalStorage Fallback)
             let contactNumber = user.contactNumber;
@@ -1836,6 +1854,13 @@ function addFarmMarker(farmData) {
         weight: 2
     }).addTo(map);
 
+    // [NEW] 농장 주소 추가
+    const farmAddress = farmData.farmAddress ? `
+        <p style="margin:4px 0; color:#3b82f6; border-left: 3px solid #3b82f6; padding-left: 8px; font-size: 0.9em;">
+            🏠 <strong>농장 주소:</strong> ${farmData.farmAddress}
+        </p>
+    ` : '';
+    
     // [NEW] 지역 정보 추가
     const regionInfo = farmData.region ? `
         <p style="margin:4px 0; color:#10b981; font-weight: 600;">
@@ -1848,6 +1873,7 @@ function addFarmMarker(farmData) {
     const popupContent = `
         <div class="map-info-window">
             <h4 style="color:#1e293b; margin:0 0 8px 0;">${farmData.farmName}</h4>
+            ${farmAddress}
             ${regionInfo}
             <p style="margin:4px 0; color:#475569;"><strong>작물:</strong> ${getCropName(farmData.crop)}</p>
             <p style="margin:4px 0; color:#475569;"><strong>수확량:</strong> ${farmData.yield} kg</p>
@@ -1881,6 +1907,12 @@ function updateFarmList(farmData) {
                 <span class="farm-name">${farm.farmName}</span>
                 <span class="farm-time">${getTimeAgo(farm.timestamp)}</span>
             </div>
+            ${farm.farmAddress ? `
+            <div class="farm-address-badge" style="background: rgba(59, 130, 246, 0.1); color: #60a5fa; padding: 6px 12px; border-radius: 6px; margin: 8px 0; font-size: 0.85em; display: flex; align-items: center; gap: 6px; border: 1px solid rgba(59, 130, 246, 0.3);">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+                <span style="font-size: 0.9em;">${farm.farmAddress}</span>
+            </div>
+            ` : ''}
             ${farm.region ? `
             <div class="farm-region-badge" style="background: linear-gradient(135deg, #10b981, #059669); color: white; padding: 6px 12px; border-radius: 6px; margin: 8px 0; font-size: 0.85em; display: flex; align-items: center; gap: 6px;">
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"></path><circle cx="12" cy="10" r="3"></circle></svg>
@@ -1979,6 +2011,99 @@ function showLocationRequestGuide() {
             guide.remove();
         }
     }, 5000);
+}
+
+// [NEW] Proceed to Map Registration (separated logic)
+async function proceedToMapRegistration(lat, lng, cropId, yieldAmount, regionInfo) {
+    const registerBtn = document.getElementById('register-map-btn');
+    
+    registerBtn.innerHTML = '<i data-lucide="loader"></i> 등록 중...';
+    lucide.createIcons();
+
+    // Get User Info
+    const user = getCurrentUser();
+    if (!user) {
+        // 로그인 없이 시세만 조회하는 경우
+        registerBtn.disabled = false;
+        registerBtn.innerHTML = '<i data-lucide="search"></i> 시세 조회';
+        lucide.createIcons();
+        
+        console.log("💡 비로그인 사용자 - 시세만 표시");
+        
+        // 지도 등록 안내
+        setTimeout(() => {
+            if (confirm("📍 지도에 수확량을 등록하시겠습니까?\n(로그인이 필요합니다)")) {
+                window.location.href = 'login.html';
+            }
+        }, 500);
+        return;
+    }
+
+    // Get Contact Info (Session -> LocalStorage Fallback)
+    let contactNumber = user.contactNumber;
+    if (!contactNumber) {
+        try {
+            const localUsers = JSON.parse(localStorage.getItem('users') || '[]');
+            const matchedUser = localUsers.find(u => u.email === user.email || u.email === user.userId);
+            if (matchedUser) contactNumber = matchedUser.contactNumber;
+        } catch (e) {
+            console.error("Error retrieving contact info:", e);
+        }
+    }
+
+    // [NEW] 농장 정보 포함
+    const farmData = {
+        userId: user.uid || user.email,
+        userName: user.name || "사용자",
+        farmName: user.farmName || "내 스마트팜",
+        farmAddress: user.farmAddress || "주소 미등록", // [NEW] 농장 주소
+        contact: contactNumber || "연락처 미기재",
+        crop: cropId,
+        yield: yieldAmount,
+        location: [lat, lng],
+        region: regionInfo.name, // 지역명 추가
+        regionModifier: regionInfo.modifier, // 시세 변동률
+        timestamp: new Date().toISOString(),
+        expiresAt: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString() // 3 days
+    };
+
+    try {
+        // A. Firestore Save
+        if (typeof db !== 'undefined' && db) {
+            // Use .set() to overwrite/update existing user data
+            await db.collection('active_farms').doc(String(farmData.userId)).set(farmData);
+            console.log("✅ Farm registered to Firestore Map");
+        }
+
+        // B. LocalStorage Save (Fallback/Offline)
+        let localFarms = JSON.parse(localStorage.getItem('active_farms') || '[]');
+        // Remove old entry for this user
+        localFarms = localFarms.filter(f => f.userId !== farmData.userId);
+        localFarms.push(farmData);
+        localStorage.setItem('active_farms', JSON.stringify(localFarms));
+
+        // [NEW] Success Message with region info
+        console.log("✅ 지도 등록 완료:", farmData);
+        
+        // Show success notification
+        showNotification(
+            `✅ 시세 조회 및 지도 등록 완료!\n\n` +
+            `📍 위치: ${farmData.farmAddress}\n` +
+            `🌍 지역: ${regionInfo.name}\n` +
+            `🌾 작물: ${getCropName(cropId)}\n` +
+            `📦 수확량: ${yieldAmount}kg\n\n` +
+            `관리자 모드에서 확인하실 수 있습니다.`,
+            'success'
+        );
+
+    } catch (error) {
+        console.error("Map Registration Error:", error);
+        alert("지도 등록 중 오류가 발생했습니다.");
+    } finally {
+        registerBtn.disabled = false;
+        registerBtn.innerHTML = '<i data-lucide="search"></i> 시세 조회';
+        lucide.createIcons();
+    }
 }
 
 // [NEW] Show manual region selector
