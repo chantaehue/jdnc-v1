@@ -605,8 +605,10 @@ function updateAISolutionPage(analysis) {
     let summaryText = `<b>VPD ${analysis.vpd} kPa</b> | <b>온도차 ${analysis.tempDiff}°C</b>`;
     if (analysis.ecDiff) {
         summaryText += ` <br> <b>EC 변화 ${analysis.ecDiff}</b> | <b>pH 변동 ${analysis.phTrend}</b>`;
-        document.getElementById('ec-diff').textContent = (analysis.ecDiff > 0 ? "+" : "") + analysis.ecDiff;
-        document.getElementById('ph-trend').textContent = (analysis.phTrend > 0 ? "+" : "") + analysis.phTrend;
+        const ecEl = document.getElementById('ec-diff');
+        const phEl = document.getElementById('ph-trend');
+        if (ecEl) ecEl.textContent = (analysis.ecDiff > 0 ? "+" : "") + analysis.ecDiff;
+        if (phEl) phEl.textContent = (analysis.phTrend > 0 ? "+" : "") + analysis.phTrend;
     }
     analysisBox.querySelector('p').innerHTML = `전문가 통합 분석: <br>${summaryText}`;
 
