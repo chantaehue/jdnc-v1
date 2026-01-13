@@ -300,7 +300,8 @@
                                     </div>
                                 </div>
 
-                                <button type="submit" class="submit-btn full-width">통합 분석 및 데이터 반영</button>
+                                <button type="submit" id="analysis-submit-btn" class="submit-btn full-width">통합 분석 및 데이터
+                                    반영</button>
                             </form>
 
                             <!-- Nutrient Solution Results -->
@@ -860,21 +861,21 @@
                     if (mode === 'premium') {
                         // Premium Mode: Show Nutrient Section, Hide Basic Selectors (to match screenshot)
                         console.log('💎 프리미엄 모드 활성화 (index.html)');
-                        
+
                         // [FIX] .hidden 클래스 제거 후 인라인 스타일도 제거 (CSS !important 회피)
                         if (premiumSection) {
                             premiumSection.classList.remove('hidden');
                             premiumSection.style.display = ''; // 빈 값으로 CSS 기본값 사용
                             console.log('✅ 양액 섹션 표시:', premiumSection);
                         }
-                        
+
                         // 모든 premium-only 요소 표시
                         document.querySelectorAll('.premium-only').forEach(el => {
                             el.classList.remove('hidden');
                             el.style.display = '';
                             console.log('✅ premium-only 요소 표시');
                         });
-                        
+
                         if (mainTitle) mainTitle.textContent = '프리미엄 정밀 관제 (Premium)';
 
                         // Hide Basic Selectors to avoid duplication (Premium uses its own crop selector)
@@ -889,13 +890,13 @@
                     } else {
                         // Basic Mode: Show Basic Selectors, Hide Nutrient Section
                         console.log('🌿 베이직 모드 활성화 (index.html)');
-                        
+
                         // [FIX] 모든 premium-only 요소 숨김
                         document.querySelectorAll('.premium-only').forEach(el => {
                             el.classList.add('hidden');
                             console.log('✅ premium-only 요소 숨김');
                         });
-                        
+
                         if (mainTitle) mainTitle.textContent = '스마트 팜 통합 관제 (Basic)';
 
                         // Show Basic Selectors
@@ -911,399 +912,17 @@
                 });
             });
 
-            const form = document.getElementById('manual-data-form');
-            if (!form) return;
+            // [CLEAN] 모든 인라인 분석 코드 제거됨
+            // app.js의 initManualEntry() 함수가 모든 분석을 처리합니다.
+            // (작물 선택 → 양액표준 선택 → 환경정보 입력 → 버튼 클릭 → 결과 출력)
 
-            // Crop Data for Scientific Analysis
-            const cropDB = {
-                strawberry: { name: '딸기', tempOpt: [17, 23], humOpt: [60, 70], desc: '저온성 작물', ecBase: 1.0 },
-                tomato: { name: '토마토', tempOpt: [22, 27], humOpt: [65, 75], desc: '광 요구도 높음', ecBase: 2.5 },
-                paprika: { name: '파프리카', tempOpt: [21, 26], humOpt: [70, 80], desc: '착과기 온도 관리 중요', ecBase: 2.3 },
-                cucumber: { name: '오이', tempOpt: [24, 28], humOpt: [75, 85], desc: '수분 요구도 높음', ecBase: 2.2 },
-                lettuce: { name: '상추', tempOpt: [15, 20], humOpt: [60, 70], desc: '호냉성 엽채류', ecBase: 1.5 },
-                eggplant: { name: '가지', tempOpt: [23, 28], humOpt: [65, 75], desc: '고온성 작물', ecBase: 2.0 },
-                leafy: { name: '엽채류', tempOpt: [15, 22], humOpt: [60, 70], desc: '호냉성 작물', ecBase: 1.4 },
-                melon: { name: '멜론', tempOpt: [25, 30], humOpt: [60, 70], desc: '고온 건조 선호', ecBase: 2.1 },
-                default: { name: '작물', tempOpt: [20, 25], humOpt: [60, 70], desc: '표준 관리', ecBase: 2.0 }
-            };
+            console.log("✅ 분석 로직은 app.js에서 처리됩니다 (initManualEntry)");
 
-            form.addEventListener('submit', (e) => {
-                e.preventDefault(); // [FIX] 폼 제출로 인한 페이지 새로고침 방지
-
-                console.log("🔬 분석 시작...");
-
-                // Wait briefly to allow UI updates, then forcing         setTimeout(() => {
-                console.log("📝 입력값 읽기 시작...");
-
-                // 1. Acquire Integrated Data - 안전한 값 읽기
-                const tempEl = document.getElementById('input-temp');
-                const humEl = document.getElementById('input-hum');
-                const lightEl = document.getElementById('input-light');
-                const co2El = document.getElementById('input-co2');
-
-                const temp = tempEl && tempEl.value ? parseFloat(tempEl.value) : 0;
-                const hum = humEl && humEl.value ? parseFloat(humEl.value) : 0;
-                const light = lightEl && lightEl.value ? parseFloat(lightEl.value) : 0;
-                const co2 = co2El && co2El.value ? parseFloat(co2El.value) : 0;
-
-                console.log("환경 데이터:", { temp, hum, light, co2 });
-
-                // Premium Nutrient Data
-                const inECEl = document.getElementById('input-in-ec');
-                const inPHEl = document.getElementById('input-in-ph');
-                const rootECEl = document.getElementById('input-root-ec');
-                const rootPHEl = document.getElementById('input-root-ph');
-                const drainECEl = document.getElementById('input-drain-ec');
-
-                const inEC = inECEl && inECEl.value ? parseFloat(inECEl.value) : 0;
-                const inPH = inPHEl && inPHEl.value ? parseFloat(inPHEl.value) : 0;
-                const rootEC = rootECEl && rootECEl.value ? parseFloat(rootECEl.value) : 0;
-                const rootPH = rootPHEl && rootPHEl.value ? parseFloat(rootPHEl.value) : 0;
-                const drainEC = drainECEl && drainECEl.value ? parseFloat(drainECEl.value) : 0;
-
-                console.log("양액 데이터:", { inEC, inPH, rootEC, rootPH, drainEC });
-
-                // [Fix] Check Active Mode (Basic vs Premium)
-                const activeNav = document.querySelector('.nav-item.active[data-page="dashboard"]');
-                const currentMode = activeNav ? activeNav.getAttribute('data-mode') : 'basic';
-
-                console.log("현재 모드:", currentMode);
-
-                // Force Premium if User is in Premium Dashboard (even if inputs are empty)
-                const isNutrientActive = (currentMode === 'premium') || (inEC > 0 || rootEC > 0);
-
-                console.log("프리미엄 분석 활성화:", isNutrientActive);  // [FIX] 프리미엄 모드에서는 nutrient-crop-select 사용
-                let cropSelect = document.getElementById('nutrient-crop-select');
-                if (!cropSelect || currentMode === 'basic') {
-                    cropSelect = document.getElementById('select-crop');
-                }
-                const cropKey = cropSelect ? cropSelect.value : 'strawberry';
-                const cropInfo = cropDB[cropKey] || cropDB.default;
-
-                console.log("선택된 작물:", cropInfo.name);
-
-                // [New] Get Growth Stage
-                const stageSelect = document.getElementById('nutrient-stage-select');
-                const stageKey = stageSelect ? stageSelect.value : 'vegetative';
-                console.log("생육 단계:", stageKey);
-
-                // [FIX] 데이터 검증 - 최소한 온도와 습도는 입력되어야 함
-                if (!temp || temp === 0 || isNaN(temp)) {
-                    alert('⚠️ 온도를 입력해주세요!');
-                    if (tempEl) tempEl.focus();
-                    return;
-                }
-                if (!hum || hum === 0 || isNaN(hum)) {
-                    alert('⚠️ 습도를 입력해주세요!');
-                    if (humEl) humEl.focus();
-                    return;
-                }
-
-                console.log("✅ 데이터 검증 통과");
-
-                // 2. Scientific Integrated Algorithms
-                // A. VPD Calculation
-                const svp = 0.6108 * Math.exp((17.27 * temp) / (temp + 237.3));
-                const vpd = (svp * (1 - hum / 100)).toFixed(2);
-
-                // B. Dynamic EC Target with Growth Stage Logic
-                // Base EC by Crop (from DB)
-                let baseEC = cropInfo.ecBase || 2.0;
-
-                console.log("작물별 기본 EC:", baseEC, "작물:", cropInfo.name);
-                let stageFactor = 0;
-                let stageDesc = '';
-
-                // Stage-specific Factor (Scientific Rationale)
-                switch (stageKey) {
-                    case 'planting':
-                        stageFactor = -0.4;
-                        stageDesc = '정식기 (활착 촉진을 위해 저농도 관리)';
-                        break;
-                    case 'vegetative':
-                        stageFactor = -0.2;
-                        stageDesc = '영양 생장기 (잎/줄기 성장 중심)';
-                        break;
-                    case 'flowering':
-                        stageFactor = 0.0;
-                        stageDesc = '개화기 (화아 분화 및 생식 생장 전환)';
-                        break;
-                    case 'fruiting':
-                        stageFactor = +0.3;
-                        stageDesc = '비대기 (과실 비대를 위한 고농도 양분 요구)';
-                        break;
-                    case 'harvest':
-                        stageFactor = +0.1;
-                        stageDesc = '수확기 (균형 잡힌 양분 공급)';
-                        break;
-                    case 'late':
-                        stageFactor = -0.1;
-                        stageDesc = '수확 후기 (초세 관리)';
-                        break;
-                }
-
-                let targetEC = baseEC + stageFactor;
-                let envCompMessage = [];
-
-                // Environmental Compensation
-                if (temp > 27 || light > 40000) {
-                    targetEC -= 0.2;
-                    envCompMessage.push('☀️ 고온/강광 (수분 흡수 촉진)');
-                } else if (light < 10000) {
-                    targetEC += 0.2;
-                    envCompMessage.push('☁️ 저광 (도장 억제)');
-                }
-
-                targetEC = targetEC.toFixed(1);
-
-                // 3. Generate Integrated Report
-                let resultsHTML = '';
-
-                // [Header Section]
-                if (isNutrientActive) {
-                    resultsHTML += `
-                                <li style="background: linear-gradient(135deg, #1e1b4b, #312e81); padding: 15px; border-radius: 12px; margin-bottom: 15px; border: 1px solid #6366f1; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
-                                    <h4 style="color: #a5b4fc; margin: 0 0 5px 0; font-size: 1.1em;">🔬 RTS 통합 정밀 분석 (생육 단계별 최적화)</h4>
-                                    <div style="font-size: 0.9em; color: #e0e7ff; line-height: 1.4;">
-                                        현재 <strong>[${stageDesc.split('(')[0].trim()}]</strong> 단계와 온실 환경에 맞춰 최적 제어값을 산출했습니다.<br>
-                                        <div style="margin-top: 8px; display: flex; gap: 10px; flex-wrap: wrap;">
-                                            <span style="padding: 5px 10px; background: rgba(99, 102, 241, 0.2); border-radius: 4px; border: 1px solid rgba(99, 102, 241, 0.5);">
-                                                🎯 목표 EC: <strong>${targetEC}dS/m</strong>
-                                            </span>
-                                            <span style="padding: 5px 10px; background: rgba(16, 185, 129, 0.2); border-radius: 4px; border: 1px solid rgba(16, 185, 129, 0.5);">
-                                                 🌱 단계 요인: ${stageFactor}
-                                            </span>
-                        <span style="padding: 5px 10px; background: rgba(245, 158, 11, 0.2); border-radius: 4px; border: 1px solid rgba(245, 158, 11, 0.5);">
-                            🌦️ 환경 요인: ${envCompMessage.length > 0 ? envCompMessage.join(', ') : '보정 없음'}
-                        </span>
-                                        </div>
-                                    </div>
-                                </li>
-                        `;
-                        } else {
-                            resultsHTML += `<li style="padding:10px; border-bottom:1px solid #333; margin-bottom:10px; color:#adfa1d;"><strong>🌿 BASIC 온실 진단</strong> (Premium 모드에서 정밀 분석 가능)</li>`;
-                        }
-
-                        // [Analysis Content]
-                        // 1. Nutrient Interaction (Only Premium)
-                        if (isNutrientActive) {
-                            console.log("💊 양액 분석 시작...", { inEC, inPH, rootEC, drainEC });
-
-                            // Check if inputs are strictly empty
-                            if (inEC === 0 && rootEC === 0 && drainEC === 0) {
-                                resultsHTML += `
-                <li style="border-left: 4px solid #6366f1; background: rgba(99, 102, 241, 0.1); padding: 12px; border-radius: 4px; margin-bottom: 8px; color: #c4b5fd;">
-                                        <strong>ℹ️ 양액 데이터 입력 대기중</strong><br>
-                                        공급(In), 근권(Root), 배액(Drain)의 EC/pH 데이터를 입력하시면<br>
-                                        <strong>${stageDesc.split('(')[0]}</strong> 단계에 맞는 정밀 처방전을 제공합니다.<br>
-                                        <span style="color:#fbbf24;">💡 상단 목표값: EC ${targetEC}dS/m (현재 설정해야 할 적정 가이드)</span>
-                                    </li>
-                                `;
-                            } else {
-                                // EC 분석
-                                if (inEC > 0) {
-                                    const ecGap = (inEC - targetEC).toFixed(1);
-
-                                    // Diagnosis based on Integrated Target
-                                    if (Math.abs(ecGap) > 0.3) {
-                                        const status = ecGap > 0 ? '과다' : '부족';
-                                        const action = ecGap > 0 ? '낮추세요' : '높이세요';
-                                        const color = ecGap > 0 ? '#f59e0b' : '#ef4444';
-                                        resultsHTML += `<li style="border-left: 4px solid ${color}; background: rgba(0,0,0,0.2); padding: 12px; border-radius: 4px; margin-bottom: 8px;"><strong style="color: ${color}">⚠️ 급액 농도 ${status}</strong><br>설정: <strong>${inEC}</strong> dS/m → 목표: <strong>${targetEC}</strong> dS/m (차이: ${ecGap > 0 ? '+' : ''}${ecGap})<br>현재 [${stageDesc.split('(')[0].trim()}] 단계에는 EC <strong>${targetEC}</strong> dS/m가 이상적입니다.<br>📝 조치: 급액 농도를 <strong>${action}</strong></li>`;
-                                    } else {
-                                        resultsHTML += `<li style="border-left: 4px solid #10b981; background: rgba(0,0,0,0.2); padding: 12px; border-radius: 4px; margin-bottom: 8px;"><strong style="color: #34d399;">✅ 생육 단계 적합 관리 중</strong><br>현재 급액 EC: <strong>${inEC}</strong> dS/m<br>[${stageDesc.split('(')[0].trim()}] 단계에 맞는 적절한 EC 농도를 유지하고 있습니다.</li>`;
-                                    }
-                                }
-
-                                // Salt Accumulation Check (근권 vs 급액)
-                                if (rootEC > 0 && inEC > 0) {
-                                    const drainDiff = (rootEC - inEC).toFixed(2);
-                                    if (drainDiff > 0.5) {
-                                        resultsHTML += `<li style="border-left: 4px solid #f43f5e; background: rgba(244, 63, 94, 0.1); padding: 12px; margin-bottom: 8px; border-radius: 4px;"><strong style="color:#f43f5e;">🚨 뿌리 염류 집적 경고</strong><br>근권 EC(<strong>${rootEC}</strong>) - 급액 EC(<strong>${inEC}</strong>) = <strong>+${drainDiff}</strong> dS/m<br>비대기나 수확기에 흔히 발생하는 염류 집적입니다.<br>📝 조치: <strong>배액률을 30% 이상</strong>으로 높여 염류를 씻어내세요.</li>`;
-                                    } else if (drainDiff < -0.3) {
-                                        resultsHTML += `<li style="border-left: 4px solid #3b82f6; background: rgba(59, 130, 246, 0.1); padding: 12px; margin-bottom: 8px; border-radius: 4px;"><strong style="color:#60a5fa;">ℹ️ 근권 농도 낮음</strong><br>근권 EC가 급액보다 낮습니다 (${drainDiff} dS/m)<br>배지가 과습하거나 작물 흡수가 과도할 수 있습니다.</li>`;
-                                    }
-                                }
-
-                                // 배액 EC 체크
-                                if (drainEC > 0 && inEC > 0) {
-                                    const drainGap = (drainEC - inEC).toFixed(2);
-                                    if (drainGap > 0.8) {
-                                        resultsHTML += `<li style="border-left: 4px solid #fb923c; background: rgba(251, 146, 60, 0.1); padding: 12px; margin-bottom: 8px; border-radius: 4px;"><strong style="color:#fb923c;">⚠️ 배액 EC 높음</strong><br>배액 EC(<strong>${drainEC}</strong>) - 급액 EC(<strong>${inEC}</strong>) = <strong>+${drainGap}</strong><br>배지에 염류가 축적되고 있습니다. 배액률 증가가 필요합니다.</li>`;
-                                    }
-                                }
-
-                                // pH check (급액)
-                                if (inPH > 0) {
-                                    if (inPH > 6.3) {
-                                        resultsHTML += `<li style="border-left: 4px solid #f59e0b; padding:12px; margin-bottom:8px; border-radius:4px; background: rgba(245, 158, 11, 0.1);"><strong style="color:#fbbf24;">⚠️ pH 높음 (${inPH})</strong><br>철(Fe), 망간(Mn) 등 미량원소 흡수가 저해될 수 있습니다.<br>📝 조치: pH를 <strong>5.8~6.0</strong>으로 낮추세요 (황산 또는 질산 첨가)</li>`;
-                                    } else if (inPH < 5.5) {
-                                        resultsHTML += `<li style="border-left: 4px solid #f59e0b; padding:12px; margin-bottom:8px; border-radius:4px; background: rgba(245, 158, 11, 0.1);"><strong style="color:#fbbf24;">⚠️ pH 낮음 (${inPH})</strong><br>칼슘(Ca), 마그네슘(Mg) 흡수가 저해되고 독성이 발생할 수 있습니다.<b</strong>으로 높이세요 (수산화칼륨 첨가)</li>`;
-                                    } else {
-                                        resultsHTML += `<li style="border-left: 4px solid #10b981; padding:12px; margin-bo ttom:8px; border-radius:4p x; b 129, 0.1);"><strong style="color:#34d399;">✅ pH 적정</strong><br>현재 pH: <strong>${inPH}</strong> (최적 범위 내)</li>`;
-                                    }
-                                }
-
-                                // 근권 pH 체크
-                                if (rootPH > 0) {
-                                    if (rootPH > 6.5 || rootPH < 5.3) {
-                                        resultsHTML += `<li style="border-left: 4px solid #ef4444; padding:12px; margin-bottom:8px; border-radius:4px; background: rgba(239, 68, 68, 0.1);"><strong style="color:#f87171;">🚨 근권 pH 이탈 (${rootPH})</strong><br>뿌리 환경의 pH가 적정 범위를 벗어났습니다.<br>📝 조치: 급액 pH를 조정하여 근권 pH를 <strong>5.8~6.2</strong> 범위로 유도하세요.</li>`;
-                                    }
-                                }
-                            }
-
-                            console.log("✅ 양액 분석 완료");
-                        }
-
-                        // 2. Environmental Diagnosis (Common)
-                        console.log("🌡️ 환경 진단 시작...", { temp, hum, light, co2, vpd });
-
-                        resultsHTML += `<div style="margin: 15px 0 10px 0; border-top: 2px solid #374151; padding-top: 15px; color: #e2e8f0; font-size: 1em; font-weight: 600;">🌡️ 온실 환경 진단 (${cropInfo.name} 기준)</div>`;
-
-                        // Temperature
-                        if (temp > cropInfo.tempOpt[1]) {
-                            const overTemp = (temp - cropInfo.tempOpt[1]).toFixed(1);
-                            resultsHTML += `<li style="color:#fca5a5; margin-bottom: 8px; padding: 8px; background: rgba(252, 165, 165, 0.1); border-radius: 6px;">• 🌡️ <strong>고온 경고 (${temp}°C)</strong><br>적정 온도보다 <strong>+${overTemp}°C</strong> 높습니다. (권장: ${cropInfo.tempOpt[0]}~${cropInfo.tempOpt[1]}°C)<br>📝 조치: 환기창 개방, 유동팬 가동, 차광막 사용</li>`;
-                        } else if (temp < cropInfo.tempOpt[0]) {
-                            const underTemp = (cropInfo.tempOpt[0] - temp).toFixed(1);
-                            resultsHTML += `<li style="color:#93c5fd; margin-bottom: 8px; padding: 8px; background: rgba(147, 197, 253, 0.1); border-radius: 6px;">• 🌡️ <strong>저온 경고 (${temp}°C)</strong><br>적정 온도보다 <strong>-${underTemp}°C</strong> 낮습니다. (권장: ${cropInfo.tempOpt[0]}~${cropInfo.tempOpt[1]}°C)<br>📝 조치: 난방기 가동, 보온 커튼 닫기, 이중 피복 점검</li>`;
-                        } else {
-                            resultsHTML += `<li style="color:#86efac; margin-bottom: 8px; padding: 8px; background: rgba(134, 239, 172, 0.1); border-radius: 6px;">• 🌡️ <strong>온도 최적 (${temp}°C)</strong><br>${cropInfo.name} 생육에 이상적인 온도입니다. (권장: ${cropInfo.tempOpt[0]}~${cropInfo.tempOpt[1]}°C)</li>`;
-                        }
-
-                        // Humidity
-                        if (hum > cropInfo.humOpt[1]) {
-                            resultsHTML += `<li style="color:#fca5a5; margin-bottom: 8px; padding: 8px; background: rgba(252, 165, 165, 0.1); border-radius: 6px;">• 💧 <strong>다습 (${hum}%)</strong><br>적정 습도보다 높습니다. (권장: ${cropInfo.humOpt[0]}~${cropInfo.humOpt[1]}%)<br>📝 조치: 환기, 제습, 병해 예방 관리</li>`;
-                        } else if (hum < cropInfo.humOpt[0]) {
-                            resultsHTML += `<li style="color:#fcd34d; margin-bottom: 8px; padding: 8px; background: rgba(252, 211, 77, 0.1); border-radius: 6px;">• 💧 <strong>건조 (${hum}%)</strong><br>적정 습도보다 낮습니다. (권장: ${cropInfo.humOpt[0]}~${cropInfo.humOpt[1]}%)<br>📝 조치: 가습, 엽면살수, 차광</li>`;
-                        } else {
-                            resultsHTML += `<li style="color:#86efac; margin-bottom: 8px; padding: 8px; background: rgba(134, 239, 172, 0.1); border-radius: 6px;">• 💧 <strong>습도 최적 (${hum}%)</strong><br>${cropInfo.name}에 적합한 습도입니다. (권장: ${cropInfo.humOpt[0]}~${cropInfo.humOpt[1]}%)</li>`;
-                        }
-
-                        // VPD (Vapor Pressure Deficit)
-                        if (vpd > 1.6) {
-                            resultsHTML += `<li style="color:#fcd34d; margin-bottom: 8px; padding: 8px; background: rgba(252, 211, 77, 0.1); border-radius: 6px;">• ☀️ <strong>VPD 높음 (${vpd} kPa)</strong><br>증산이 과도하여 수분 스트레스 위험<br>📝 조치: 가습, 차광, 엽면 살수로 VPD를 0.8~1.2 범위로 조절</li>`;
-                        } else if (vpd < 0.5) {
-                            resultsHTML += `<li style="color:#fca5a5; margin-bottom: 8px; padding: 8px; background: rgba(252, 165, 165, 0.1); border-radius: 6px;">• 💧 <strong>VPD 낮음 (${vpd} kPa)</strong><br>증산 부족, 곰팡이병 발생 위험<br>📝 조치: 제습 난방, 환기로 VPD를 0.8~1.2 범위로 조절</li>`;
-                        } else {
-                            resultsHTML += `<li style="color:#86efac; margin-bottom: 8px; padding: 8px; background: rgba(134, 239, 172, 0.1); border-radius: 6px;">• 💧 <strong>VPD 최적 (${vpd} kPa)</strong><br>광합성과 증산이 균형을 이루는 최적 상태입니다.</li>`;
-                        }
-
-                        // Light (if user inputs)
-                        if (light > 0) {
-                            if (light < 15000) {
-                                resultsHTML += `<li style="color:#fbbf24; margin-bottom: 8px; padding: 8px; background: rgba(251, 191, 36, 0.1); border-radius: 6px;">• ☁️ <strong>일조 부족 (${light} lux)</strong><br>광합성 효율이 저하될 수 있습니다.<br>📝 조치: 보광등 사용 (20,000 lux 이상 권장)</li>`;
-                            } else if (light > 60000) {
-                                resultsHTML += `<li style="color:#f87171; margin-bottom: 8px; padding: 8px; background: rgba(248, 113, 113, 0.1); border-radius: 6px;">• ☀️ <strong>광량 과다 (${light} lux)</strong><br>광 스트레스 및 엽소 현상 위험<br>📝 조치: 차광막 가동 (50,000 lux 이하로 조절)</li>`;
-                            } else {
-                                resultsHTML += `<li style="color:#86efac; margin-bottom: 8px; padding: 8px; background: rgba(134, 239, 172, 0.1); border-radius: 6px;">• ☀️ <strong>광량 적정 (${light} lux)</strong><br>광합성에 최적화된 광도입니다.</li>`;
-                            }
-                        }
-
-// CO2 (if user inputs)
-                        if (co2 > 0) {
-                            if (co2 < 400) {
-                                resultsHT#fbbf24; margin-bottom: 8px; padding: 8px; background: rgba(251, 191, 36, 0.1); border-radius: 6px;">• 🌫️ <strong>CO2 부족 (${co2} ppm)</strong><br>광합성 효율 저하<br>📝 조치: CO2 시비 (1000~1500 ppm 권장)</li>`;
-                            } else if (co2 > 2000) {
-                                resultsHTML += `<li style="color:#f87171; margin-bottom: 8px; padding: 8px; background: rgba(248, 113, 113, 0.1); border-radius: 6px;">• 🌫️ <strong>CO2 과다 (${co2} ppm)</strong><br>생리장해 위험<br>📝 조치: 환기하여 1500 ppm 이하로 조절</li>`;
-                            } else {
-                                resultsHTML += `<li style="color:#86efac; margin-bottom: 8px; padding: 8px; background: rgba(134, 239, 172, 0.1); border-radius: 6px;">• 🌫️ <strong>CO2 적정 (${co2} ppm)</strong><br>광합성                       }
-                        }
-
-                        console.log("✅ 환경 진단 완료");
-
-                        // Force Render
-                        console.log("📊 결과 렌더링 시작...");
-
-                        const card = document.getElementById('nutrient-solution-card');
-                        const list = document.getElementById('nutrient-solution-list');
-                        const targetInfo = document.getElementById('nutrient-target-info');
-                        const badge = document.getElementById('nutrient-status-badge');
-
-                        console.log("렌더링 요소 확인:", {
-                            card: !!card,
-                            list: !!list,
-                            targetInfo: !!targetInfo,
-                            badge: !!badge
-                        });
-
-                        if (card && list) {
-                            // 숨김 클래스 제거
-                            card.classList.remove('hidden');
-
-                            // Dynamic Style based on mode
-                            const borderColor = isNutrientActive ? '#6366f1' : '#10b981';
-                            const bgGradient = isNutrientActive
-                                ? 'linear-gradient(135deg, rgba(30, 27, 75, 0.98), rgba(15, 23, 42, 0.98))'
-                                : 'linear-gradient(135deg, rgba(15, 23, 42, 0.98), rgba(6, 78, 59, 0.98))';
-
-                            card.style.cssText = `
-                                display: block !important; 
-                                visibility: visible !important; 
-                                opacity: 1 !important; 
-                                background: ${bgGradient} !important; 
-                                color: white !important; 
-                                min-height: 200px; 
-                                padding: 25px; 
-                                border-radius: 16px; 
-                                margin-top: 20px; 
-                                border: 2px solid ${borderColor}; 
-                                box-shadow: 0 20px 40px rgba(0,0,0,0.6), 0 0 20px ${borderColor}40;
-                            `;
-
-                            // 결과 HTML 삽입
-                            list.innerHTML = resultsHTML;
-                            console.log("결과 HTML 길이:", resultsHTML.length);
-
-                            // 타이틀 업데이트
-                            const analysisType = isNutrientActive ? 'RTS 통합 정밀 분석' : '기본 환경 분석';
-                            const title = `<strong>${cropInfo.name} ${analysisType} 리포트</strong>`;
-                            if (targetInfo) {
-                                targetInfo.innerHTML = title;
-                                targetInfo.style.cssText = 'font-size: 1.2em; color: #e2e8f0;';
-                            }
-
-                            // 뱃지 업데이트
-                            if (badge) {
-                                badge.textContent = isNutrientActive ? '🔬 AI PREMIUM' : '🌿 BASIC';
-                                badge.className = 'status-badge ' + (isNutrientActive ? 'premium' : 'success');
-                                badge.style.cssText = `
-                                    display: inline-block !important;
-                                    background-color: ${isNutrientActive ? '#4f46e5' : '#10b981'} !important;
-                                    color: white !important;
-                                    padding: 6px 14px;
-                                    border-radius: 20px;
-                                    font-size: 0.85em;
-                                    font-weight: 700;
-                                    box-shadow: 0 4px 8px rgba(0,0,0,0.3);
-                                `;
-                            }
-
-                            // 스크롤 애니메이션
-                            setTimeout(() => {
-                                card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-                            }, 100);
-
-                            console.log("✅ 결과 렌더링 완료!");
-
-                            // 성공 알림
-                            const analysisMsg = isNutrientActive
-                                ? `${cropInfo.name} 프리미엄 분석이 완료되었습니다! 🔬`
-                                : `${cropInfo.name} 기본 분석이 완료되었습니다! 🌿`;
-
-                            // 콘솔에만 표시 (사용자 방해 최소화)
-                            console.log("📢", analysisMsg);
-                        } else {
-                            console.error("❌ 결과 카드를 찾을 수 없습니다!", { card, list });
-                            alert('⚠️ 결과 표시 오류: 분석 결과 카드를 찾을 수 없습니다.\n페이지를 새로고침 해주세요.');
-                        }
-                    } catch (e) {
-                        console.error("❌ 분석 중 오류 발생:", e);
-                        console.error("오류 스택:", e.stack);
-                        alert(`분석 중 오류가 발생했습니다.\n\n오류 내용: ${e.message}\n\n브라우저 콘솔(F12)을 확인하시거나 페이지를 새로고침 해주세요.`);
-                    }
-                }, 300);
-            });
+            /*
+            // [제거된 복잡한 인라인 코드]
+            // 모든 복잡한 분석 로직은 app.js의 initManualEntry()가 처리합니다.
+            // (제거됨)
+            */
 
             // [New] Unlock Premium Membership Feature
             const unlockBtn = document.getElementById('unlock-premium-btn');
@@ -1670,7 +1289,7 @@
 
                                     // Execute Upgrade
                                     user.role = 'premium';
-                                    localStorage.setItem('smartfarm_user', JSON.strf                                  localStorage.setItem('auto_redirect_premium', 'true');
+                                    localStorage.setItem('smartfarm_user', JSON.stringify(user)); localStorage.setItem('auto_redirect_premium', 'true');
 
                                     // Redirect
                                     setTimeout(() => {
@@ -1789,7 +1408,7 @@
                                             localStorage.setItem('smartfarm_user', JSON.stringify(user));
                                             localStorage.setItem('auto_redirect_premium', 'true');
 
-                                            /niew
+
                                             document.getElementById('paymentStep2').style.display = 'none';
                                             document.getElementById('paymentStep3').style.display = 'flex';
 
@@ -1827,7 +1446,7 @@
                         console.log("Logout clicked.");
 
                         // 1. Firebase SignOut
-                        if (typeof firebase !== 'undefined' i {
+                        if (typeof firebase !== 'undefined') {
                             firebase.auth().signOut().then(() => {
                                 console.log("Firebase signed out successfully.");
                                 clearLocalAndRedirect();
@@ -1940,7 +1559,7 @@
                                                 if (typeof firebase !== 'undefined' && firebase.firestore && user.uid) {
                                                     firebase.firestore().collection('users').doc(user.uid).update({
                                                         role: 'premium'
-                                    }).then(() => console.log("DB Updated"));
+                                                    }).then(() => console.log("DB Updated"));
                                                 }
 
                                                 if (step2) step2.style.display = 'none';
@@ -1970,7 +1589,7 @@
 
                 if (premiumNav && unlockBtn) {
                     console.log("Attaching Premium Nav Auto-Trigger");
-            av.addEventListener('click', (e) => {
+                    av.addEventListener('click', (e) => {
                         // Check User Role
                         let userStr = localStorage.getItem('currentUser') || sessionStorage.getItem('currentUser');
                         if (userStr) {
@@ -2002,7 +1621,7 @@
                         // Relock Cards
                         document.querySelectorAll('.premium-locked').forEach(el => el.classList.remove('unlocked'));
                         // Reset Form Styles
-                        document.querySelectorAll('.entry-form').forEac => el.classList.remove('pactive'));
+                        document.querySelectorAll('.entry-form').forEach(el => el.classList.remove('pactive'));
 
                         // Show Banner if user is Basic
                         const premiumBanner = document.getElementById('premium-banner');

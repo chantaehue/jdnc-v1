@@ -687,6 +687,7 @@ function analyzeStatus(data) {
 
 function updateAISolutionPage(analysis) {
     try {
+        alert('📊 STEP 2-1: updateAISolutionPage 시작');
         console.log('📊 updateAISolutionPage 호출됨:', analysis);
 
         // [FIX] 대시보드 페이지에서 결과를 표시
@@ -696,6 +697,7 @@ function updateAISolutionPage(analysis) {
             console.error('❌ dashboard-page를 찾을 수 없습니다');
             return;
         }
+        alert('✅ STEP 2-2: dashboard-page 찾음');
 
         // 양액 분석 결과 카드 찾기
         let resultCard = document.getElementById('nutrient-solution-card');
@@ -704,9 +706,11 @@ function updateAISolutionPage(analysis) {
             alert('❌ nutrient-solution-card를 찾을 수 없음');
             return;
         }
+        alert('✅ STEP 2-3: nutrient-solution-card 찾음');
 
         // 카드가 있으면 표시
         resultCard.classList.remove('hidden');
+        alert('✅ STEP 2-4: 카드 표시');
 
         // 상태 배지 업데이트
         const statusBadge = document.getElementById('nutrient-status-badge');
@@ -747,7 +751,9 @@ function updateAISolutionPage(analysis) {
         }
 
         console.log('✅ 분석 결과 UI 업데이트 완료');
+        alert('✅ STEP 2-7: updateAISolutionPage 완료!');
     } catch (error) {
+        alert(`❌ STEP 2 오류: ${error.message}`);
         console.error('updateAISolutionPage 오류:', error);
     }
 }
@@ -792,32 +798,17 @@ function initManualEntry() {
     console.log('🎯 initManualEntry 함수 실행됨');
     const form = document.getElementById('manual-data-form');
     if (!form) {
+        alert('⚠️ 오류: manual-data-form을 찾을 수 없습니다!');
         console.error('❌ Form not found');
         return;
     }
+    alert('✅ 분석 폼을 찾았습니다!');
     console.log('✅ 폼 찾음:', form);
 
     form.addEventListener('submit', (e) => {
         e.preventDefault();
+        alert('🔬 분석 버튼 클릭됨!');
         console.log('🔘 Submit event triggered');
-
-        // 즉시 결과 카드 표시
-        const resultCard = document.getElementById('nutrient-solution-card');
-        if (resultCard) {
-            resultCard.classList.remove('hidden');
-            const statusBadge = document.getElementById('nutrient-status-badge');
-            if (statusBadge) {
-                statusBadge.className = 'status-badge healthy';
-                statusBadge.textContent = '분석 완료';
-            }
-            const solutionList = document.getElementById('nutrient-solution-list');
-            if (solutionList) {
-                solutionList.innerHTML = '<li class="solution-success"><i data-lucide="check-circle"></i><span>분석이 완료되었습니다.</span></li>';
-                if (typeof lucide !== 'undefined') lucide.createIcons();
-            }
-            resultCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-            console.log('✅ 결과 표시 완료');
-        }
 
         try {
 
@@ -907,9 +898,12 @@ function initManualEntry() {
 
             // Perform Scientific Analysis (General Status)
             const analysis = analyzeStatus(data);
+            alert('✅ STEP 1: 기본 분석 완료');
 
+            alert('🔄 updateAISolutionPage 호출 시도...');
             try {
                 updateAISolutionPage(analysis);
+                alert('✅ STEP 2: AI 솔루션 페이지 업데이트 완료');
             } catch (err) {
                 alert(`❌ updateAISolutionPage 호출 오류: ${err.message}`);
                 console.error('updateAISolutionPage call error:', err);
@@ -917,16 +911,22 @@ function initManualEntry() {
 
             // Perform Detailed Analysis (Greenhouse Only or Premium Nutrient)
             if (isPremiumActive) {
+                alert('🔍 프리미엄 모드 감지 - 양액 분석 시작');
                 if (typeof analyzeNutrientSolution === 'function') {
                     analyzeNutrientSolution(data);
+                    alert('✅ STEP 3: 프리미엄 양액 분석 완료');
                 } else {
+                    alert('❌ 오류: analyzeNutrientSolution 함수를 찾을 수 없습니다');
                     console.error('analyzeNutrientSolution unreachable');
                     throw new Error('프리미엄 분석 함수를 찾을 수 없습니다.');
                 }
             } else {
+                alert('🔍 베이직 모드 감지 - 온실 분석 시작');
                 if (typeof analyzeGreenhouseOnly === 'function') {
                     analyzeGreenhouseOnly(data);
+                    alert('✅ STEP 3: 베이직 온실 분석 완료');
                 } else {
+                    alert('❌ 오류: analyzeGreenhouseOnly 함수를 찾을 수 없습니다');
                     console.error('analyzeGreenhouseOnly unreachable');
                     console.warn('온실 분석 함수가 아직 로드되지 않았습니다.');
                     return;
