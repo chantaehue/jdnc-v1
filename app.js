@@ -197,6 +197,15 @@ function initNavigation() {
                         loadAndDisplayNotice();
                         console.log('🔔 대시보드 공지사항 새로고침');
                     }
+                    
+                    // [NEW] 대시보드로 전환 시 시세 정보 로드
+                    setTimeout(() => {
+                        const cropSelect = document.getElementById('select-crop');
+                        if (cropSelect && typeof updateMarketData === 'function') {
+                            updateMarketData(cropSelect.value, 'week');
+                            console.log('💰 대시보드 시세 정보 로드');
+                        }
+                    }, 200);
                 }
 
                 // [NEW] 관리자 페이지로 전환 시 공지사항 목록 갱신
@@ -706,90 +715,125 @@ function generateMarketHistory(basePrice, period) {
 }
 
 function updateMarketData(cropId, period = 'week') {
+    console.log('💰 시세 업데이트 시작:', { cropId, period });
+    
     if (!marketPriceData) {
+        console.error('❌ 시세 데이터베이스가 없습니다!');
         alert('시세 데이터베이스가 로드되지 않았습니다.');
         return;
     }
+    
     const base = marketPriceData[cropId] || marketPriceData.strawberry;
+    console.log('📊 기준 가격:', base);
 
-    // Debug
-    // console.log('Updating Market Data for:', cropId);
+    // Update Value Displays - 안전하게 처리
+    const wholesaleMax = document.getElementById('wholesale-max');
+    const wholesaleAvg = document.getElementById('wholesale-avg');
+    const wholesaleMin = document.getElementById('wholesale-min');
+    const retailMax = document.getElementById('retail-max');
+    const retailAvg = document.getElementById('retail-avg');
+    const retailMin = document.getElementById('retail-min');
 
-    // Update Value Displays
-    document.getElementById('wholesale-max').textContent = `${(base.wholesale * 1.2).toLocaleString()}원`;
-    document.getElementById('wholesale-avg').textContent = `${base.wholesale.toLocaleString()}원`;
-    document.getElementById('wholesale-min').textContent = `${(base.wholesale * 0.8).toLocaleString()}원`;
+    if (wholesaleMax) wholesaleMax.textContent = `${Math.round(base.wholesale * 1.2).toLocaleString()}원`;
+    if (wholesaleAvg) wholesaleAvg.textContent = `${base.wholesale.toLocaleString()}원`;
+    if (wholesaleMin) wholesaleMin.textContent = `${Math.round(base.wholesale * 0.8).toLocaleString()}원`;
 
-    document.getElementById('retail-max').textContent = `${(base.retail * 1.2).toLocaleString()}원`;
-    document.getElementById('retail-avg').textContent = `${base.retail.toLocaleString()}원`;
-    document.getElementById('retail-min').textContent = `${(base.retail * 0.8).toLocaleString()}원`;
+    if (retailMax) retailMax.textContent = `${Math.round(base.retail * 1.2).toLocaleString()}원`;
+    if (retailAvg) retailAvg.textContent = `${base.retail.toLocaleString()}원`;
+    if (retailMin) retailMin.textContent = `${Math.round(base.retail * 0.8).toLocaleString()}원`;
+    
+    console.log('✅ 가격 표시 완료!');
 
-    // Update Chart
-    const history = generateMarketHistory(base.wholesale, period);
+    // Update Chart (차트 업데이트는 선택적, 실패해도 가격은 표시됨)
+    try {
+        const history = generateMarketHistory(base.wholesale, period);
 
-    if (marketChart) {
-        marketChart.destroy();
-    }
+        if (marketChart) {
+            marketChart.destroy();
+        }
 
-    const ctx = document.getElementById('marketChart').getContext('2d');
-    marketChart = new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels: history.labels,
-            datasets: [{
-                label: '도매 평균가 (가락시장)',
-                data: history.data,
-                borderColor: '#10b981',
-                backgroundColor: 'rgba(16, 185, 129, 0.1)',
-                borderWidth: 3,
-                fill: true,
-                tension: 0.4,
-                pointRadius: 4,
-                pointBackgroundColor: '#10b981'
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: { display: false }
+        const chartCanvas = document.getElementById('marketChart');
+        if (!chartCanvas) {
+            console.warn('⚠️ marketChart 캔버스를 찾을 수 없습니다. 차트 업데이트 생략.');
+            return;
+        }
+
+        const ctx = chartCanvas.getContext('2d');
+        marketChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: history.labels,
+                datasets: [{
+                    label: '도매 평균가 (가락시장)',
+                    data: history.data,
+                    borderColor: '#10b981',
+                    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                    borderWidth: 3,
+                    fill: true,
+                    tension: 0.4,
+                    pointRadius: 4,
+                    pointBackgroundColor: '#10b981'
+                }]
             },
-            scales: {
-                y: {
-                    beginAtZero: false,
-                    grid: { color: 'rgba(255, 255, 255, 0.05)' },
-                    ticks: { color: '#94a3b8', callback: (value) => value.toLocaleString() + '원' }
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false }
                 },
-                x: {
-                    grid: { display: false },
-                    ticks: { color: '#94a3b8' }
+                scales: {
+                    y: {
+                        beginAtZero: false,
+                        grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                        ticks: { color: '#94a3b8', callback: (value) => value.toLocaleString() + '원' }
+                    },
+                    x: {
+                        grid: { display: false },
+                        ticks: { color: '#94a3b8' }
+                    }
                 }
             }
-        }
-    });
+        });
+        console.log('✅ 차트 업데이트 완료!');
+    } catch (error) {
+        console.error('❌ 차트 업데이트 실패:', error);
+        console.log('💡 가격 표시는 정상적으로 완료되었습니다.');
+    }
 }
 
 function initMarketAnalysis() {
     const cropSelect = document.getElementById('select-crop');
     const periodBtns = document.querySelectorAll('.period-tabs button');
 
+    console.log('🔥 시세 조회 초기화:', { cropSelect: !!cropSelect, periodBtns: periodBtns.length });
+
+    if (!cropSelect) {
+        console.error('❌ 작물 선택 요소를 찾을 수 없습니다!');
+        return;
+    }
+
     // Sync with crop selection
     cropSelect.addEventListener('change', () => {
-        const currentPeriod = document.querySelector('.period-tabs button.active').dataset.period;
+        console.log('📊 작물 변경:', cropSelect.value);
+        const currentPeriod = document.querySelector('.period-tabs button.active')?.dataset.period || 'week';
         updateMarketData(cropSelect.value, currentPeriod);
     });
 
     // Period switching
     periodBtns.forEach(btn => {
         btn.addEventListener('click', () => {
+            console.log('📅 기간 변경:', btn.dataset.period);
             periodBtns.forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
             updateMarketData(cropSelect.value, btn.dataset.period);
         });
     });
 
-    // Initial load
-    updateMarketData(cropSelect.value, 'week');
+    // Initial load - 즉시 실행
+    console.log('✅ 초기 시세 로드 시작:', cropSelect.value);
+    setTimeout(() => {
+        updateMarketData(cropSelect.value, 'week');
+    }, 100);
 }
 
 function calculateVPD(temp, humidity) {
@@ -2325,22 +2369,35 @@ function initNutrientSelectors() {
 
 // Harvest Info Registration and Price Query
 function initHarvestRegistration() {
+    console.log('🚀 수확량 등록 및 시세 조회 초기화 시작...');
+    
     const marketCropSelect = document.getElementById('market-crop-select');
     const yieldAmountInput = document.getElementById('yield-amount');
     const registerBtn = document.getElementById('register-map-btn');
     const wholesaleRevenueEl = document.getElementById('wholesale-revenue');
     const retailRevenueEl = document.getElementById('retail-revenue');
     const revenuePredictions = document.getElementById('revenue-predictions');
+    
+    console.log('📋 DOM 요소 확인:', {
+        marketCropSelect: !!marketCropSelect,
+        yieldAmountInput: !!yieldAmountInput,
+        registerBtn: !!registerBtn,
+        wholesaleRevenueEl: !!wholesaleRevenueEl,
+        retailRevenueEl: !!retailRevenueEl,
+        revenuePredictions: !!revenuePredictions
+    });
 
     function calculateRevenue(regionInfo = null) {
         const cropId = marketCropSelect.value;
         const yieldAmount = parseFloat(yieldAmountInput.value) || 0;
 
-        console.log(`Calculating revenue for ${cropId}, amount: ${yieldAmount}`);
+        console.log(`💰 수익 계산 시작: ${cropId}, 수확량: ${yieldAmount}kg`);
 
         if (yieldAmount <= 0) {
+            console.warn('⚠️ 수확량이 0 이하입니다.');
             if (wholesaleRevenueEl) wholesaleRevenueEl.textContent = '--';
             if (retailRevenueEl) retailRevenueEl.textContent = '--';
+            if (revenuePredictions) revenuePredictions.classList.add('hidden');
             return;
         }
 
@@ -2354,7 +2411,7 @@ function initHarvestRegistration() {
         const wholesaleRevenue = Math.round(yieldAmount * adjustedWholesale);
         const retailRevenue = Math.round(yieldAmount * adjustedRetail);
 
-        console.log("💰 시세 계산:", {
+        console.log("💰 시세 계산 결과:", {
             지역: regionInfo ? regionInfo.name : "전국 평균",
             변동률: modifier,
             도매가: adjustedWholesale,
@@ -2375,10 +2432,14 @@ function initHarvestRegistration() {
             }
         }
 
-        // Show predictions if hidden
+        // Show predictions if hidden (강제 표시)
         if (revenuePredictions) {
+            console.log('📺 시세 결과 카드 표시 중...');
             revenuePredictions.classList.remove('hidden');
-            revenuePredictions.style.setProperty('display', 'flex', 'important');
+            revenuePredictions.style.display = 'flex';
+            revenuePredictions.style.visibility = 'visible';
+            revenuePredictions.style.opacity = '1';
+            console.log('✅ 시세 결과 카드 표시 완료!');
 
             // [NEW] 지역 정보 배너 추가
             let regionBanner = document.getElementById('region-info-banner');
@@ -2416,11 +2477,16 @@ function initHarvestRegistration() {
     }
 
     async function registerToMap() {
+        console.log('🔘 시세 조회 버튼 클릭!');
+        
         const cropId = marketCropSelect.value;
         const yieldAmount = parseFloat(yieldAmountInput.value) || 0;
 
+        console.log('📊 입력값:', { cropId, yieldAmount });
+
         if (yieldAmount <= 0) {
-            console.log("⚠️ 수확량을 올바르게 입력해주세요.");
+            alert("⚠️ 수확량을 올바르게 입력해주세요!");
+            console.warn("⚠️ 수확량이 0 이하입니다.");
             return;
         }
 
@@ -2440,6 +2506,13 @@ function initHarvestRegistration() {
 
             // Calculate revenue with region info
             calculateRevenue(regionInfo);
+            
+            // 버튼 복원
+            setTimeout(() => {
+                registerBtn.disabled = false;
+                registerBtn.innerHTML = '<i data-lucide="search"></i> 시세 조회';
+                lucide.createIcons();
+            }, 500);
 
             // Silently use registered location
             console.log("✅ 등록된 농장 위치 기반 시세 조회 완료");
@@ -2473,6 +2546,13 @@ function initHarvestRegistration() {
             }
 
             calculateRevenue(regionInfo);
+            
+            // 버튼 복원
+            setTimeout(() => {
+                registerBtn.disabled = false;
+                registerBtn.innerHTML = '<i data-lucide="search"></i> 시세 조회';
+                lucide.createIcons();
+            }, 500);
 
             // Register to map
             if (user) {
@@ -2498,9 +2578,18 @@ function initHarvestRegistration() {
 
             // 지역별 시세로 수익 계산
             calculateRevenue(regionInfo);
+            
+            // 버튼 복원
+            setTimeout(() => {
+                registerBtn.disabled = false;
+                registerBtn.innerHTML = '<i data-lucide="search"></i> 시세 조회';
+                lucide.createIcons();
+            }, 500);
 
             // Proceed to map registration
-            proceedToMapRegistration(lat, lng, cropId, yieldAmount, regionInfo);
+            if (user) {
+                proceedToMapRegistration(lat, lng, cropId, yieldAmount, regionInfo);
+            }
 
             // 3. Get Contact Info (Session -> LocalStorage Fallback)
             let contactNumber = user.contactNumber;
@@ -2603,7 +2692,31 @@ function initHarvestRegistration() {
         // Removed auto-calc listeners
 
         // Register Button Click
-        registerBtn.addEventListener('click', registerToMap);
+        registerBtn.addEventListener('click', () => {
+            console.log('🔘🔘🔘 시세 조회 버튼 클릭 감지!');
+            
+            // 즉시 시세 계산 및 표시
+            const yieldAmount = parseFloat(yieldAmountInput.value) || 0;
+            
+            if (yieldAmount <= 0) {
+                alert('⚠️ 수확량을 입력해주세요!');
+                return;
+            }
+            
+            console.log('✅ 수확량:', yieldAmount, 'kg');
+            console.log('✅ 작물:', marketCropSelect.value);
+            
+            // 강제로 시세 표시
+            console.log('💰 시세 계산 시작...');
+            calculateRevenue(null); // 전국 평균 시세 표시
+            
+            // 그 다음 지도 등록 등의 작업 수행
+            setTimeout(() => {
+                registerToMap();
+            }, 300);
+        });
+    } else {
+        console.error('❌ register-map-btn 버튼을 찾을 수 없습니다!');
     }
 }
 
@@ -4062,6 +4175,23 @@ document.addEventListener('DOMContentLoaded', () => {
             }, 100);
         });
     });
+
+    // [NEW] 시세 정보 강제 초기화 (모든 초기화 완료 후)
+    setTimeout(() => {
+        console.log('🚀 시세 정보 강제 로드 시작...');
+        const cropSelect = document.getElementById('select-crop');
+        if (cropSelect) {
+            console.log('✅ 작물 선택 요소 찾음:', cropSelect.value);
+            if (typeof updateMarketData === 'function') {
+                updateMarketData(cropSelect.value, 'week');
+                console.log('💰 시세 정보 강제 로드 완료!');
+            } else {
+                console.error('❌ updateMarketData 함수를 찾을 수 없습니다!');
+            }
+        } else {
+            console.error('❌ select-crop 요소를 찾을 수 없습니다!');
+        }
+    }, 500);
 
     // [Critical] Re-check admin access after all initialization
     // This ensures admin menu visibility is correctly set after all DOM operations

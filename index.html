@@ -62,10 +62,6 @@
                     <span>원격 제어</span>
                 </a>
 
-                <a href="#" class="nav-item" data-page="ai-solution" onclick="openPage('ai-solution'); return false;">
-                    <i data-lucide="sparkles"></i>
-                    <span>AI 작물 분석 솔루션</span>
-                </a>
                 <!-- [Security] Admin Only Menu - Hidden by default, shown via JS for admin users -->
                 <a href="#" class="nav-item hidden" data-page="admin" id="admin-nav-item"
                     onclick="openAdminPage(); return false;">
@@ -1323,10 +1319,292 @@
                             </div>
 
                             <!-- Register Button -->
-                            <button id="register-map-btn" class="analyze-btn">
+                            <button id="register-map-btn" class="analyze-btn" onclick="showMarketPriceNow(); return false;">
                                 <i data-lucide="search"></i>
                                 시세 조회
                             </button>
+                            
+                            <script>
+                            function showMarketPriceNow() {
+                                console.log('🔥🔥🔥 시세 조회 버튼 클릭됨!');
+                                
+                                // 1. 데이터 수집
+                                const crop = document.getElementById('market-crop-select')?.value || 'strawberry';
+                                const amount = parseFloat(document.getElementById('yield-amount')?.value) || 0;
+                                
+                                console.log('📊 데이터:', { crop, amount });
+                                
+                                if (amount <= 0) {
+                                    alert('⚠️ 수확량을 입력해주세요!');
+                                    return;
+                                }
+                                
+                                // 2. 기본 가격 DB
+                                const prices = {
+                                    strawberry: { wholesale: 35000, retail: 48000, name: '딸기' },
+                                    tomato: { wholesale: 18000, retail: 25000, name: '토마토' },
+                                    lettuce: { wholesale: 8000, retail: 12000, name: '상추' },
+                                    cucumber: { wholesale: 15000, retail: 22000, name: '오이' },
+                                    paprika: { wholesale: 28000, retail: 38000, name: '파프리카' },
+                                    eggplant: { wholesale: 12000, retail: 18000, name: '가지' },
+                                    leafy: { wholesale: 5000, retail: 9000, name: '엽채류' },
+                                    melon: { wholesale: 45000, retail: 60000, name: '멜론' }
+                                };
+                                
+                                const price = prices[crop] || prices['strawberry'];
+                                
+                                // 2-1. 실시간 시장 시세 분석 섹션 업데이트 (도매/소매 가격)
+                                console.log('📊 시장 시세 분석 업데이트 시작...');
+                                
+                                // 도매 가격 (가락시장)
+                                const wholesaleMaxEl = document.getElementById('wholesale-max');
+                                const wholesaleAvgEl = document.getElementById('wholesale-avg');
+                                const wholesaleMinEl = document.getElementById('wholesale-min');
+                                
+                                if (wholesaleMaxEl) {
+                                    wholesaleMaxEl.textContent = Math.round(price.wholesale * 1.2).toLocaleString() + '원';
+                                    console.log('✅ 도매 최고가:', wholesaleMaxEl.textContent);
+                                }
+                                if (wholesaleAvgEl) {
+                                    wholesaleAvgEl.textContent = price.wholesale.toLocaleString() + '원';
+                                    console.log('✅ 도매 평균가:', wholesaleAvgEl.textContent);
+                                }
+                                if (wholesaleMinEl) {
+                                    wholesaleMinEl.textContent = Math.round(price.wholesale * 0.8).toLocaleString() + '원';
+                                    console.log('✅ 도매 최저가:', wholesaleMinEl.textContent);
+                                }
+                                
+                                // 소매 가격 (네이버 스마트스토어)
+                                const retailMaxEl = document.getElementById('retail-max');
+                                const retailAvgEl = document.getElementById('retail-avg');
+                                const retailMinEl = document.getElementById('retail-min');
+                                
+                                if (retailMaxEl) {
+                                    retailMaxEl.textContent = Math.round(price.retail * 1.2).toLocaleString() + '원';
+                                    console.log('✅ 소매 최고가:', retailMaxEl.textContent);
+                                }
+                                if (retailAvgEl) {
+                                    retailAvgEl.textContent = price.retail.toLocaleString() + '원';
+                                    console.log('✅ 소매 평균가:', retailAvgEl.textContent);
+                                }
+                                if (retailMinEl) {
+                                    retailMinEl.textContent = Math.round(price.retail * 0.8).toLocaleString() + '원';
+                                    console.log('✅ 소매 최저가:', retailMinEl.textContent);
+                                }
+                                
+                                console.log('✅ 시장 시세 분석 섹션 업데이트 완료!');
+                                
+                                // 3. 수익 계산
+                                const wholesaleIncome = Math.round(amount * price.wholesale);
+                                const retailIncome = Math.round(amount * price.retail);
+                                
+                                console.log('💰 예상 수입 계산 결과:', { wholesaleIncome, retailIncome });
+                                
+                                // 4. 화면에 표시
+                                const wholesaleEl = document.getElementById('wholesale-revenue');
+                                const retailEl = document.getElementById('retail-revenue');
+                                const predictionCard = document.getElementById('revenue-predictions');
+                                
+                                if (wholesaleEl) {
+                                    wholesaleEl.textContent = wholesaleIncome.toLocaleString() + '원';
+                                    console.log('✅ 도매 수입 표시:', wholesaleEl.textContent);
+                                }
+                                
+                                if (retailEl) {
+                                    retailEl.textContent = retailIncome.toLocaleString() + '원';
+                                    console.log('✅ 소매 수입 표시:', retailEl.textContent);
+                                }
+                                
+                                if (predictionCard) {
+                                    predictionCard.classList.remove('hidden');
+                                    predictionCard.style.cssText = 'display: flex !important; visibility: visible !important; opacity: 1 !important;';
+                                    console.log('✅ 시세 카드 표시 완료!');
+                                }
+                                
+                                // 5. 차트 컨테이너 표시
+                                const chartContainer = document.querySelector('.market-chart-container');
+                                if (chartContainer) {
+                                    chartContainer.style.display = 'block';
+                                    chartContainer.style.visibility = 'visible';
+                                    chartContainer.style.opacity = '1';
+                                    console.log('✅ 차트 컨테이너 표시 완료!');
+                                }
+                                
+                                // 6. 차트 업데이트
+                                console.log('📈 시장 시세 차트 업데이트 시작...');
+                                setTimeout(() => {
+                                    updateMarketChart(crop, 'week');
+                                }, 100);
+                                
+                                // 7. 기간 탭 버튼 이벤트 연결
+                                const periodButtons = document.querySelectorAll('.period-tabs button');
+                                periodButtons.forEach(btn => {
+                                    btn.onclick = function() {
+                                        // 활성화 상태 변경
+                                        periodButtons.forEach(b => b.classList.remove('active'));
+                                        this.classList.add('active');
+                                        
+                                        // 차트 업데이트
+                                        const period = this.getAttribute('data-period');
+                                        console.log('📊 기간 변경:', period);
+                                        updateMarketChart(crop, period);
+                                    };
+                                });
+                                
+                                // 완료 메시지
+                                setTimeout(() => {
+                                    alert(`✅ 시세 조회 완료!\n\n${price.name} ${amount}kg\n\n📦 예상 수입:\n도매: ${wholesaleIncome.toLocaleString()}원\n소매: ${retailIncome.toLocaleString()}원\n\n📊 시장 시세 분석도 업데이트되었습니다!`);
+                                }, 200);
+                            }
+                            
+                            // 차트 인스턴스 저장
+                            let marketChartInstance = null;
+                            
+                            // 기간별 더미 데이터 생성 함수
+                            function generateMarketHistory(basePrice, period) {
+                                const labels = [];
+                                const data = [];
+                                let days = 7;
+                                
+                                if (period === 'week') days = 7;
+                                else if (period === 'month') days = 30;
+                                else if (period === 'year') days = 365;
+                                
+                                for (let i = 0; i < days; i++) {
+                                    const date = new Date();
+                                    date.setDate(date.getDate() - (days - 1 - i));
+                                    
+                                    if (period === 'year') {
+                                        // 1년: 월별 표시
+                                        if (i % 30 === 0) {
+                                            labels.push(date.toLocaleDateString('ko-KR', { month: 'numeric', day: 'numeric' }));
+                                        }
+                                    } else if (period === 'month') {
+                                        // 1개월: 일별 표시 (3일마다)
+                                        if (i % 3 === 0) {
+                                            labels.push(date.toLocaleDateString('ko-KR', { month: 'numeric', day: 'numeric' }));
+                                        }
+                                    } else {
+                                        // 1주일: 매일 표시
+                                        labels.push(date.toLocaleDateString('ko-KR', { month: 'numeric', day: 'numeric' }));
+                                    }
+                                    
+                                    // 가격 변동 (±20%)
+                                    data.push(basePrice * (1 + (Math.random() - 0.5) * 0.4));
+                                }
+                                
+                                return { labels, data };
+                            }
+                            
+                            // 차트 업데이트 함수
+                            function updateMarketChart(cropId, period) {
+                                console.log('🎨 차트 그리기 시작:', { cropId, period });
+                                
+                                const prices = {
+                                    strawberry: { wholesale: 35000, retail: 48000, name: '딸기' },
+                                    tomato: { wholesale: 18000, retail: 25000, name: '토마토' },
+                                    lettuce: { wholesale: 8000, retail: 12000, name: '상추' },
+                                    cucumber: { wholesale: 15000, retail: 22000, name: '오이' },
+                                    paprika: { wholesale: 28000, retail: 38000, name: '파프리카' },
+                                    eggplant: { wholesale: 12000, retail: 18000, name: '가지' },
+                                    leafy: { wholesale: 5000, retail: 9000, name: '엽채류' },
+                                    melon: { wholesale: 45000, retail: 60000, name: '멜론' }
+                                };
+                                
+                                const price = prices[cropId] || prices['strawberry'];
+                                const history = generateMarketHistory(price.wholesale, period);
+                                
+                                const ctx = document.getElementById('marketChart');
+                                if (!ctx) {
+                                    console.error('❌ marketChart 캔버스를 찾을 수 없습니다.');
+                                    return;
+                                }
+                                
+                                // 이전 차트 파괴
+                                if (marketChartInstance) {
+                                    marketChartInstance.destroy();
+                                }
+                                
+                                // 새 차트 생성
+                                marketChartInstance = new Chart(ctx.getContext('2d'), {
+                                    type: 'line',
+                                    data: {
+                                        labels: history.labels,
+                                        datasets: [{
+                                            label: `${price.name} 도매 평균가 (가락시장)`,
+                                            data: history.data,
+                                            borderColor: '#10b981',
+                                            backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                                            borderWidth: 3,
+                                            fill: true,
+                                            tension: 0.4,
+                                            pointRadius: 4,
+                                            pointBackgroundColor: '#10b981',
+                                            pointBorderColor: '#fff',
+                                            pointBorderWidth: 2
+                                        }]
+                                    },
+                                    options: {
+                                        responsive: true,
+                                        maintainAspectRatio: false,
+                                        plugins: {
+                                            legend: {
+                                                display: true,
+                                                labels: {
+                                                    color: '#fff',
+                                                    font: { size: 14, weight: 'bold' }
+                                                }
+                                            },
+                                            tooltip: {
+                                                backgroundColor: 'rgba(30, 41, 59, 0.95)',
+                                                titleColor: '#fff',
+                                                bodyColor: '#94a3b8',
+                                                borderColor: '#10b981',
+                                                borderWidth: 1,
+                                                padding: 12,
+                                                displayColors: false,
+                                                callbacks: {
+                                                    label: function(context) {
+                                                        return '가격: ' + Math.round(context.parsed.y).toLocaleString() + '원';
+                                                    }
+                                                }
+                                            }
+                                        },
+                                        scales: {
+                                            y: {
+                                                beginAtZero: false,
+                                                grid: {
+                                                    color: 'rgba(255, 255, 255, 0.05)',
+                                                    borderColor: 'rgba(255, 255, 255, 0.1)'
+                                                },
+                                                ticks: {
+                                                    color: '#94a3b8',
+                                                    font: { size: 12 },
+                                                    callback: (value) => value.toLocaleString() + '원'
+                                                }
+                                            },
+                                            x: {
+                                                grid: {
+                                                    display: false
+                                                },
+                                                ticks: {
+                                                    color: '#94a3b8',
+                                                    font: { size: 11 },
+                                                    maxRotation: 45,
+                                                    minRotation: 0
+                                                }
+                                            }
+                                        },
+                                        interaction: {
+                                            intersect: false,
+                                            mode: 'index'
+                                        }
+                                    }
+                                });
+                                
+                                console.log('✅ 차트 업데이트 완료!');
+                            }
+                            </script>
                         </div>
 
                         <!-- Revenue Result (Initially Hidden or Updated via JS) -->
@@ -2611,10 +2889,6 @@
         <a href="#" class="bottom-nav-item nav-item" data-page="dashboard" data-mode="premium">
             <i data-lucide="crown"></i>
             <span>Premium</span>
-        </a>
-        <a href="#" class="bottom-nav-item nav-item" data-page="ai-solution">
-            <i data-lucide="brain-circuit"></i>
-            <span>AI</span>
         </a>
         <a href="#" class="bottom-nav-item nav-item hidden" data-page="admin" id="admin-nav-mobile">
             <i data-lucide="map"></i>
