@@ -352,8 +352,16 @@ function resetLocationButton() {
 async function fetchWeatherData(lat, lon) {
     // Reusable fetch for fallback or manual updates
     try {
+        console.log(`🌤️ 날씨 데이터 요청: lat=${lat}, lon=${lon}`);
+
         const response = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true&hourly=relativehumidity_2m,precipitation_probability`);
+
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+
         const data = await response.json();
+        console.log('✅ 날씨 API 응답:', data);
 
         const tempEl = document.getElementById('out-temp');
         const humEl = document.getElementById('out-hum');
@@ -363,14 +371,21 @@ async function fetchWeatherData(lat, lon) {
         if (tempEl) tempEl.textContent = data.current_weather.temperature;
         if (humEl) humEl.textContent = data.hourly.relativehumidity_2m[new Date().getHours()];
         if (windEl) windEl.textContent = data.current_weather.windspeed;
-        if (rainEl) rainEl.textContent = data.hourly.precipitation_probability[new Date().getHours()];
+        if (rainEl) rainEl.textContent = data.hourly.precipitation_probability[new Date().getHours()] || 0;
 
         // Update top bar
         const topWeatherText = document.querySelector('.weather-info span');
         if (topWeatherText) topWeatherText.textContent = `${data.current_weather.temperature}°C 실외`;
 
+        console.log('✅ 날씨 UI 업데이트 완료');
+
     } catch (e) {
-        console.error("Open-Meteo Fetch Error:", e);
+        console.error("❌ Open-Meteo Fetch Error:", e);
+        // Fallback values
+        const tempEl = document.getElementById('out-temp');
+        const humEl = document.getElementById('out-hum');
+        if (tempEl) tempEl.textContent = '--';
+        if (humEl) humEl.textContent = '--';
     }
 }
 
