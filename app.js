@@ -1655,6 +1655,8 @@ function updateNutrientSolutionUI(solutions, status, targetEC, targetPH, cropId,
 
     // Show the card and move it below the form if needed
     solutionCard.classList.remove('hidden');
+    solutionCard.style.display = 'block'; // Force display
+    console.log('✅ nutrient-solution-card 표시됨');
 
     // Determine Mode (Premium vs Free)
     const isGreenhouseOnly = standardName === 'Greenhouse Analysis';
@@ -1701,6 +1703,11 @@ function updateNutrientSolutionUI(solutions, status, targetEC, targetPH, cropId,
 
     // Reinitialize Lucide icons
     lucide.createIcons();
+
+    // Scroll to results
+    setTimeout(() => {
+        solutionCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }, 100);
 
     console.log('✅ 양액 분석 결과 UI 렌더링 완료');
 }
