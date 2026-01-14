@@ -146,28 +146,28 @@
                                     <i data-lucide="thermometer-sun"></i>
                                     <div class="outdoor-info">
                                         <p>실외 온도</p>
-                                        <span id="out-temp">--</span>°C
+                                        <span id="out-temp">15</span>°C
                                     </div>
                                 </div>
                                 <div class="outdoor-item">
                                     <i data-lucide="droplets"></i>
                                     <div class="outdoor-info">
                                         <p>실외 습도</p>
-                                        <span id="out-hum">--</span>%
+                                        <span id="out-hum">65</span>%
                                     </div>
                                 </div>
                                 <div class="outdoor-item">
                                     <i data-lucide="wind"></i>
                                     <div class="outdoor-info">
                                         <p>풍속</p>
-                                        <span id="out-wind">--</span> km/h
+                                        <span id="out-wind">2.5</span> km/h
                                     </div>
                                 </div>
                                 <div class="outdoor-item">
                                     <i data-lucide="cloud-rain"></i>
                                     <div class="outdoor-info">
                                         <p>강수 확률</p>
-                                        <span id="out-rain">--</span>%
+                                        <span id="out-rain">20</span>%
                                     </div>
                                 </div>
                             </div>
@@ -176,7 +176,12 @@
                                 <span id="current-location">서울 (기본값)</span>
                             </div>
                             <div class="outdoor-actions">
-                                <button class="location-btn" id="get-my-location-btn">
+                                <button 
+                                    class="location-btn" 
+                                    id="get-my-location-btn" 
+                                    type="button"
+                                    onclick="console.log('🔘 [HTML onclick] 버튼 클릭 감지!');"
+                                    style="cursor: pointer !important; pointer-events: auto !important;">
                                     <i data-lucide="navigation"></i>
                                     내 위치 날씨
                                 </button>
@@ -214,7 +219,7 @@
                                     </div>
                                 </div>
                             </div>
-                            <form id="manual-data-form" class="entry-form-advanced">
+                            <form id="manual-data-form" class="entry-form-advanced" onsubmit="return false;">
                                 <!-- Group 1: Environment -->
                                 <div class="form-section">
                                     <h5>환경 정보</h5>
@@ -241,6 +246,16 @@
                                         </div>
                                     </div>
                                 </div>
+
+                                <!-- 베이직 전용 버튼 (환경 정보만 분석) -->
+                                <button 
+                                    type="button" 
+                                    id="basic-analysis-btn" 
+                                    class="submit-btn full-width basic-only"
+                                    onclick="showBasicAnalysisResult(); return false;"
+                                    style="cursor: pointer !important; pointer-events: auto !important; background: linear-gradient(135deg, #059669 0%, #10b981 100%);">
+                                    🌿 온실 데이터 분석 및 작물생육분석
+                                </button>
 
                                 <!-- Group 2: Nutrient (Premium) -->
                                 <div class="form-section premium-only hidden">
@@ -302,23 +317,963 @@
                                             <input type="number" id="input-drain-ph" step="0.1" placeholder="pH 6.5">
                                         </div>
                                     </div>
+                                    
+                                    <!-- 프리미엄 전용 버튼 (양액 정보 섹션 안에 배치) -->
+                                    <button 
+                                        type="button" 
+                                        id="analysis-submit-btn" 
+                                        class="submit-btn full-width"
+                                        onclick="showAnalysisResult(); return false;"
+                                        style="cursor: pointer !important; pointer-events: auto !important; margin-top: 20px;">
+                                        💎 통합 분석 및 데이터 반영 (양액 포함)
+                                    </button>
                                 </div>
-
-                                <button type="submit" id="analysis-submit-btn" class="submit-btn full-width">통합 분석 및 데이터
-                                    반영</button>
+                                
+                                <script>
+                                // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+                                // 전문가 수준 무토양 수경재배 진단 알고리즘
+                                // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+                                
+                                // [1] 표준 처방 DB
+                                const SUBSTRATE_DB = {
+                                    strawberry: {
+                                        sensitive: true, max_feed_ec_step: 0.15,
+                                        transplant: { feed_ec:[0.8,1.0], feed_ph:[5.5,5.9], root_ec:[0.7,1.0], root_ph:[5.6,6.3], drain_ec:[0.7,1.1], drain_ph:[5.9,6.5], drain_ratio:[20,35] },
+                                        early_growth: { feed_ec:[0.9,1.1], feed_ph:[5.5,6.0], root_ec:[0.9,1.1], root_ph:[5.6,6.5], drain_ec:[0.9,1.2], drain_ph:[6.0,6.6], drain_ratio:[25,40] },
+                                        flowering: { feed_ec:[1.0,1.1], feed_ph:[5.5,6.0], root_ec:[1.0,1.2], root_ph:[5.6,6.5], drain_ec:[1.0,1.3], drain_ph:[6.0,6.6], drain_ratio:[25,40] },
+                                        fruit_enlargement: { feed_ec:[1.0,1.2], feed_ph:[5.5,6.0], root_ec:[1.1,1.3], root_ph:[5.6,6.6], drain_ec:[1.1,1.4], drain_ph:[6.0,6.7], drain_ratio:[25,40] },
+                                        harvest: { feed_ec:[1.1,1.2], feed_ph:[5.6,6.1], root_ec:[1.1,1.3], root_ph:[5.6,6.6], drain_ec:[1.2,1.5], drain_ph:[6.0,6.7], drain_ratio:[25,40] },
+                                        late_harvest: { feed_ec:[1.0,1.1], feed_ph:[5.7,6.2], root_ec:[1.0,1.2], root_ph:[5.6,6.7], drain_ec:[1.1,1.4], drain_ph:[6.1,6.8], drain_ratio:[25,40] }
+                                    },
+                                    tomato: {
+                                        transplant: { feed_ec:[1.2,1.6], feed_ph:[5.5,6.0], root_ec:[1.2,1.8], root_ph:[5.8,6.5], drain_ec:[1.2,2.0], drain_ph:[6.0,6.7], drain_ratio:[15,30] },
+                                        early_growth: { feed_ec:[1.6,2.0], feed_ph:[5.5,6.0], root_ec:[1.8,2.2], root_ph:[6.0,6.6], drain_ec:[2.0,2.6], drain_ph:[6.1,6.8], drain_ratio:[20,35] },
+                                        flowering: { feed_ec:[2.0,2.3], feed_ph:[5.5,6.0], root_ec:[2.0,2.4], root_ph:[6.0,6.6], drain_ec:[2.2,2.8], drain_ph:[6.1,6.8], drain_ratio:[20,35] },
+                                        fruit_enlargement: { feed_ec:[2.3,2.5], feed_ph:[5.5,6.0], root_ec:[2.3,2.6], root_ph:[6.0,6.6], drain_ec:[2.4,3.0], drain_ph:[6.1,6.8], drain_ratio:[20,35] },
+                                        harvest: { feed_ec:[2.4,2.7], feed_ph:[5.6,6.2], root_ec:[2.4,2.8], root_ph:[6.0,6.7], drain_ec:[2.6,3.2], drain_ph:[6.2,6.9], drain_ratio:[20,35] },
+                                        late_harvest: { feed_ec:[2.0,2.3], feed_ph:[5.8,6.5], root_ec:[2.0,2.5], root_ph:[6.0,6.8], drain_ec:[2.2,3.0], drain_ph:[6.2,7.0], drain_ratio:[20,35] }
+                                    },
+                                    melon: {
+                                        transplant: { feed_ec:[1.4,1.6], feed_ph:[5.5,6.0], root_ec:[1.4,1.8], root_ph:[5.8,6.5], drain_ec:[1.5,2.0], drain_ph:[6.0,6.8], drain_ratio:[20,35] },
+                                        early_growth: { feed_ec:[1.5,1.7], feed_ph:[5.5,6.0], root_ec:[1.6,2.0], root_ph:[5.8,6.5], drain_ec:[1.8,2.3], drain_ph:[6.0,6.8], drain_ratio:[20,35] },
+                                        flowering: { feed_ec:[1.5,1.8], feed_ph:[5.5,6.0], root_ec:[1.8,2.2], root_ph:[5.8,6.6], drain_ec:[2.0,2.6], drain_ph:[6.0,6.8], drain_ratio:[20,35] },
+                                        fruit_enlargement: { feed_ec:[1.8,2.1], feed_ph:[5.5,6.1], root_ec:[2.0,2.5], root_ph:[5.8,6.6], drain_ec:[2.2,3.0], drain_ph:[6.0,6.9], drain_ratio:[20,35] },
+                                        harvest: { feed_ec:[2.0,2.3], feed_ph:[5.6,6.2], root_ec:[2.2,2.8], root_ph:[5.8,6.7], drain_ec:[2.5,3.3], drain_ph:[6.1,7.0], drain_ratio:[15,30] }
+                                    },
+                                    cucumber: {
+                                        transplant: { feed_ec:[1.3,1.6], feed_ph:[5.6,6.0], root_ec:[1.3,1.8], root_ph:[5.8,6.5], drain_ec:[1.5,2.2], drain_ph:[6.0,6.8], drain_ratio:[15,30] },
+                                        early_growth: { feed_ec:[1.5,1.8], feed_ph:[5.6,6.0], root_ec:[1.7,2.1], root_ph:[5.8,6.5], drain_ec:[1.9,2.6], drain_ph:[6.0,6.8], drain_ratio:[20,35] },
+                                        flowering: { feed_ec:[1.7,2.0], feed_ph:[5.6,6.1], root_ec:[1.9,2.3], root_ph:[5.8,6.6], drain_ec:[2.1,2.8], drain_ph:[6.0,6.9], drain_ratio:[20,35] },
+                                        fruit_enlargement: { feed_ec:[1.8,2.1], feed_ph:[5.7,6.2], root_ec:[2.0,2.4], root_ph:[5.8,6.6], drain_ec:[2.2,3.0], drain_ph:[6.1,6.9], drain_ratio:[20,35] },
+                                        harvest: { feed_ec:[1.8,2.2], feed_ph:[5.8,6.3], root_ec:[2.0,2.6], root_ph:[5.9,6.7], drain_ec:[2.3,3.2], drain_ph:[6.2,7.0], drain_ratio:[20,35] },
+                                        late_harvest: { feed_ec:[1.6,2.0], feed_ph:[5.9,6.4], root_ec:[1.8,2.4], root_ph:[6.0,6.8], drain_ec:[2.0,3.0], drain_ph:[6.2,7.0], drain_ratio:[20,35] }
+                                    },
+                                    lettuce: {
+                                        sensitive: true, max_feed_ec_step: 0.15,
+                                        transplant: { feed_ec:[0.8,1.1], feed_ph:[5.6,6.1], root_ec:[0.8,1.2], root_ph:[5.8,6.5], drain_ec:[0.9,1.4], drain_ph:[6.0,6.8], drain_ratio:[10,25] },
+                                        early_growth: { feed_ec:[1.0,1.3], feed_ph:[5.6,6.2], root_ec:[1.0,1.4], root_ph:[5.8,6.6], drain_ec:[1.1,1.6], drain_ph:[6.0,6.9], drain_ratio:[10,25] },
+                                        harvest: { feed_ec:[1.0,1.4], feed_ph:[5.7,6.3], root_ec:[1.1,1.6], root_ph:[5.9,6.7], drain_ec:[1.2,1.8], drain_ph:[6.1,7.0], drain_ratio:[10,25] }
+                                    },
+                                    paprika: {
+                                        transplant: { feed_ec:[2.6,3.1], feed_ph:[5.7,6.1], root_ec:[2.8,3.3], root_ph:[5.8,6.5], drain_ec:[3.0,3.8], drain_ph:[6.0,6.8], drain_ratio:[20,35] },
+                                        early_growth: { feed_ec:[2.8,3.3], feed_ph:[5.7,6.1], root_ec:[3.0,3.5], root_ph:[5.8,6.5], drain_ec:[3.2,4.0], drain_ph:[6.0,6.8], drain_ratio:[20,35] },
+                                        flowering: { feed_ec:[2.6,3.0], feed_ph:[5.8,6.2], root_ec:[2.7,3.2], root_ph:[5.8,6.6], drain_ec:[3.0,3.8], drain_ph:[6.0,6.9], drain_ratio:[20,35] },
+                                        fruit_enlargement: { feed_ec:[2.2,2.6], feed_ph:[5.8,6.3], root_ec:[2.4,2.9], root_ph:[5.9,6.7], drain_ec:[2.7,3.5], drain_ph:[6.1,7.0], drain_ratio:[20,35] },
+                                        harvest: { feed_ec:[2.0,2.4], feed_ph:[5.8,6.4], root_ec:[2.2,2.8], root_ph:[5.9,6.8], drain_ec:[2.6,3.4], drain_ph:[6.1,7.1], drain_ratio:[20,35] },
+                                        late_harvest: { feed_ec:[2.0,2.3], feed_ph:[5.9,6.5], root_ec:[2.1,2.6], root_ph:[6.0,6.9], drain_ec:[2.4,3.2], drain_ph:[6.2,7.2], drain_ratio:[20,35] }
+                                    },
+                                    eggplant: {
+                                        transplant: { feed_ec:[1.4,1.7], feed_ph:[5.5,6.0], root_ec:[1.6,2.0], root_ph:[5.8,6.5], drain_ec:[1.8,2.6], drain_ph:[6.0,6.8], drain_ratio:[15,30] },
+                                        early_growth: { feed_ec:[1.7,2.1], feed_ph:[5.5,6.1], root_ec:[2.0,2.6], root_ph:[5.8,6.6], drain_ec:[2.3,3.2], drain_ph:[6.0,6.9], drain_ratio:[20,35] },
+                                        flowering: { feed_ec:[2.0,2.4], feed_ph:[5.6,6.2], root_ec:[2.3,2.9], root_ph:[5.8,6.7], drain_ec:[2.6,3.6], drain_ph:[6.1,7.0], drain_ratio:[20,35] },
+                                        fruit_enlargement: { feed_ec:[2.2,2.6], feed_ph:[5.7,6.3], root_ec:[2.5,3.2], root_ph:[5.9,6.8], drain_ec:[2.8,4.0], drain_ph:[6.1,7.1], drain_ratio:[20,35] },
+                                        harvest: { feed_ec:[2.2,2.8], feed_ph:[5.8,6.4], root_ec:[2.5,3.4], root_ph:[6.0,6.9], drain_ec:[3.0,4.2], drain_ph:[6.2,7.2], drain_ratio:[20,35] },
+                                        late_harvest: { feed_ec:[2.0,2.4], feed_ph:[5.9,6.5], root_ec:[2.2,3.0], root_ph:[6.0,7.0], drain_ec:[2.6,3.8], drain_ph:[6.2,7.3], drain_ratio:[20,35] }
+                                    },
+                                    leafy: {
+                                        sensitive: true, max_feed_ec_step: 0.15,
+                                        transplant: { feed_ec:[0.9,1.2], feed_ph:[5.6,6.1], root_ec:[1.0,1.4], root_ph:[5.8,6.6], drain_ec:[1.1,1.6], drain_ph:[6.0,6.9], drain_ratio:[10,25] },
+                                        early_growth: { feed_ec:[1.1,1.5], feed_ph:[5.6,6.2], root_ec:[1.2,1.8], root_ph:[5.8,6.7], drain_ec:[1.3,2.0], drain_ph:[6.0,7.0], drain_ratio:[10,25] },
+                                        harvest: { feed_ec:[1.1,1.6], feed_ph:[5.7,6.3], root_ec:[1.3,2.0], root_ph:[5.9,6.8], drain_ec:[1.4,2.2], drain_ph:[6.1,7.1], drain_ratio:[10,25] }
+                                    }
+                                };
+                                
+                                // [2] 진단 함수
+                                function showAnalysisResult() {
+                                    try {
+                                        // 2-1) 데이터 수집
+                                        const feed_ec = parseFloat(document.getElementById('input-in-ec')?.value) || 0;
+                                        const feed_ph = parseFloat(document.getElementById('input-in-ph')?.value) || 0;
+                                        const root_ec = parseFloat(document.getElementById('input-root-ec')?.value) || 0;
+                                        const root_ph = parseFloat(document.getElementById('input-root-ph')?.value) || 0;
+                                        const drain_ec = parseFloat(document.getElementById('input-drain-ec')?.value) || 0;
+                                        const drain_ph = parseFloat(document.getElementById('input-drain-ph')?.value) || 0;
+                                        const drain_ratio = 25; // 기본값 (추후 입력 필드 추가 가능)
+                                        
+                                        const cropId = document.getElementById('nutrient-crop-select')?.value || 'strawberry';
+                                        const stageInput = document.getElementById('nutrient-stage-select')?.value || 'planting';
+                                        
+                                        // HTML select value → DB 키 매핑
+                                        const stageMap = {
+                                            'planting': 'transplant',
+                                            'vegetative': 'early_growth',
+                                            'flowering': 'flowering',
+                                            'fruiting': 'fruit_enlargement',
+                                            'harvest': 'harvest',
+                                            'late': 'late_harvest'
+                                        };
+                                        const stageId = stageMap[stageInput] || stageInput;
+                                        
+                                        const temp = parseFloat(document.getElementById('input-temp')?.value) || 25;
+                                        const hum = parseFloat(document.getElementById('input-hum')?.value) || 65;
+                                        
+                                        console.log('📊 입력 데이터:', { cropId, stageInput, stageId, feed_ec, feed_ph, root_ec, root_ph, drain_ec, drain_ph, temp, hum });
+                                        
+                                        // 2-2) DB 로드
+                                        const cropDB = SUBSTRATE_DB[cropId];
+                                        if (!cropDB) {
+                                            throw new Error(`작물 "${cropId}" DB를 찾을 수 없습니다.`);
+                                        }
+                                        
+                                        const setpoint = cropDB[stageId];
+                                        if (!setpoint) {
+                                            throw new Error(`"${cropId}" 작물의 "${stageId}" 단계 DB를 찾을 수 없습니다. (입력: ${stageInput})`);
+                                        }
+                                        
+                                        const sensitive = cropDB.sensitive || false;
+                                        const warn_delta = sensitive ? 0.2 : 0.3;
+                                        
+                                        console.log('🎯 목표 범위:', setpoint);
+                                        
+                                        // 2-3) Deltas 계산
+                                        const d_root_ec = root_ec > 0 && feed_ec > 0 ? root_ec - feed_ec : 0;
+                                        const d_drain_ec = drain_ec > 0 && feed_ec > 0 ? drain_ec - feed_ec : 0;
+                                        const d_root_ph = root_ph > 0 && feed_ph > 0 ? root_ph - feed_ph : 0;
+                                        const d_drain_ph = drain_ph > 0 && feed_ph > 0 ? drain_ph - feed_ph : 0;
+                                        
+                                        console.log('📐 델타 계산:', { d_root_ec, d_drain_ec, d_root_ph, d_drain_ph });
+                                        
+                                        // 2-4) 진단 및 조치
+                                        const diagnosis = [];
+                                        const actions = [];
+                                        
+                                        // A) 염류 축적 (SALT_ACCUMULATION)
+                                        if ((drain_ec > setpoint.drain_ec[1]) || 
+                                            (root_ec > setpoint.root_ec[1]) || 
+                                            (d_drain_ec >= warn_delta)) {
+                                            
+                                            diagnosis.push({
+                                                code: 'SALT_ACCUMULATION',
+                                                severity: 'HIGH',
+                                                evidence: `배액 EC ${drain_ec.toFixed(2)} (목표: ${setpoint.drain_ec[0]}~${setpoint.drain_ec[1]}), 근권 EC ${root_ec.toFixed(2)} (목표: ${setpoint.root_ec[0]}~${setpoint.root_ec[1]})`
+                                            });
+                                            
+                                            // 조치 1순위: 배액률
+                                            if (drain_ratio < setpoint.drain_ratio[0]) {
+                                                actions.push({
+                                                    priority: 1,
+                                                    action: '배액률 증가',
+                                                    delta: `+10%p (목표: ${setpoint.drain_ratio[0]}~${setpoint.drain_ratio[1]}%)`,
+                                                    why: '염류 세척을 위해 배액량을 늘려 근권 EC를 낮춥니다.',
+                                                    icon: '💧'
+                                                });
+                                            }
+                                            
+                                            // 조치 1순위: 관수 패턴
+                                            actions.push({
+                                                priority: 1,
+                                                action: '관수 패턴 개선',
+                                                delta: '펄스 횟수 증가 + 1회 관수량 감소',
+                                                why: '균일한 염류 세척과 근권 산소 공급을 위해 소량 다회 급액으로 전환합니다.',
+                                                icon: '🔄'
+                                            });
+                                            
+                                            // 조치 2순위: EC 감소
+                                            const ec_step = cropDB.max_feed_ec_step || 0.2;
+                                            actions.push({
+                                                priority: 2,
+                                                action: '급액 EC 감소',
+                                                delta: `-${ec_step.toFixed(1)} dS/m (현재: ${feed_ec.toFixed(2)} → 목표: ${(feed_ec - ec_step).toFixed(2)})`,
+                                                why: '급액 농도를 낮춰 추가 염류 축적을 방지합니다.',
+                                                icon: '⬇️'
+                                            });
+                                            
+                                            // 민감 작물 + 심각한 축적
+                                            if (sensitive && root_ec > setpoint.root_ec[1] + 0.3) {
+                                                actions.push({
+                                                    priority: 2,
+                                                    action: '저EC 플러싱 (옵션)',
+                                                    delta: `급액 EC 0.5 dS/m로 1~2회 관수`,
+                                                    why: `⚠️ ${cropId} 염류 민감 작물이며 근권 EC가 매우 높습니다. 저농도 플러싱으로 빠른 세척 가능 (주의: 영양 손실 위험)`,
+                                                    icon: '🚨'
+                                                });
+                                            }
+                                        }
+                                        
+                                        // B) 과세척/저농도 (OVERLEACH_OR_UNDERFEED)
+                                        if ((drain_ec < setpoint.drain_ec[0] && drain_ratio > setpoint.drain_ratio[1]) || 
+                                            (d_drain_ec <= -warn_delta)) {
+                                            
+                                            diagnosis.push({
+                                                code: 'OVERLEACH_OR_UNDERFEED',
+                                                severity: 'MED',
+                                                evidence: `배액 EC ${drain_ec.toFixed(2)} (목표: ${setpoint.drain_ec[0]}~${setpoint.drain_ec[1]}), 배액률 ${drain_ratio}% (목표: ${setpoint.drain_ratio[0]}~${setpoint.drain_ratio[1]}%)`
+                                            });
+                                            
+                                            // 조치 1순위: 배액률 감소
+                                            actions.push({
+                                                priority: 1,
+                                                action: '배액률 감소',
+                                                delta: `-10%p (목표: ${setpoint.drain_ratio[0]}~${setpoint.drain_ratio[1]}%)`,
+                                                why: '과도한 배액으로 양분이 유실되고 있습니다. 배액률을 낮춰 양분 이용률을 높입니다.',
+                                                icon: '💧'
+                                            });
+                                            
+                                            // 조치 2순위: EC 증가
+                                            const ec_step = cropDB.max_feed_ec_step || 0.2;
+                                            actions.push({
+                                                priority: 2,
+                                                action: '급액 EC 증가',
+                                                delta: `+${ec_step.toFixed(1)} dS/m (현재: ${feed_ec.toFixed(2)} → 목표: ${(feed_ec + ec_step).toFixed(2)})`,
+                                                why: '급액 농도를 높여 근권 및 배액 EC를 목표 범위로 회복합니다.',
+                                                icon: '⬆️'
+                                            });
+                                        }
+                                        
+                                        // C) pH 상승 (PH_DRIFT_UP)
+                                        if ((drain_ph > setpoint.drain_ph[1]) || 
+                                            (root_ph > setpoint.root_ph[1]) || 
+                                            (d_drain_ph >= 0.3)) {
+                                            
+                                            diagnosis.push({
+                                                code: 'PH_DRIFT_UP',
+                                                severity: 'HIGH',
+                                                evidence: `배액 pH ${drain_ph.toFixed(1)} (목표: ${setpoint.drain_ph[0]}~${setpoint.drain_ph[1]}), 근권 pH ${root_ph.toFixed(1)} (목표: ${setpoint.root_ph[0]}~${setpoint.root_ph[1]})`
+                                            });
+                                            
+                                            // 조치 3순위: pH 감소
+                                            actions.push({
+                                                priority: 3,
+                                                action: '급액 pH 감소',
+                                                delta: `-0.2 (현재: ${feed_ph.toFixed(1)} → 목표: ${(feed_ph - 0.2).toFixed(1)})`,
+                                                why: '근권 pH 상승으로 미량원소(Fe, Mn, Zn) 흡수가 저해될 수 있습니다. 급액 pH를 낮춰 조정합니다.',
+                                                icon: '⬇️'
+                                            });
+                                            
+                                            // 민감 작물 경보
+                                            if (sensitive) {
+                                                actions.push({
+                                                    priority: 3,
+                                                    action: '미량원소 결핍 모니터링',
+                                                    delta: '신엽 황화, 엽맥간 황화 확인',
+                                                    why: `⚠️ ${cropId}는 pH 상승 시 Fe 결핍(황화) 위험이 높습니다. 엽면 Fe 처리 또는 킬레이트 Fe 엽면살포 준비하세요.`,
+                                                    icon: '🚨'
+                                                });
+                                            }
+                                            
+                                            // 원수 체크
+                                            actions.push({
+                                                priority: 3,
+                                                action: '원수 알칼리도 확인',
+                                                delta: '원수 pH 및 HCO₃⁻ 농도 측정',
+                                                why: '근권 pH 상승이 지속되면 원수의 높은 알칼리도(중탄산)가 원인일 수 있습니다. 원수 검사 및 산 주입량 조정이 필요합니다.',
+                                                icon: '🔬'
+                                            });
+                                        }
+                                        
+                                        // D) pH 하강 (PH_DRIFT_DOWN)
+                                        if ((drain_ph < setpoint.drain_ph[0]) || 
+                                            (root_ph < setpoint.root_ph[0]) || 
+                                            (d_drain_ph <= -0.3)) {
+                                            
+                                            diagnosis.push({
+                                                code: 'PH_DRIFT_DOWN',
+                                                severity: 'MED',
+                                                evidence: `배액 pH ${drain_ph.toFixed(1)} (목표: ${setpoint.drain_ph[0]}~${setpoint.drain_ph[1]}), 근권 pH ${root_ph.toFixed(1)} (목표: ${setpoint.root_ph[0]}~${setpoint.root_ph[1]})`
+                                            });
+                                            
+                                            // 조치 3순위: pH 증가
+                                            actions.push({
+                                                priority: 3,
+                                                action: '급액 pH 증가',
+                                                delta: `+0.2 (현재: ${feed_ph.toFixed(1)} → 목표: ${(feed_ph + 0.2).toFixed(1)})`,
+                                                why: '근권 pH 하강으로 Ca, Mg 흡수가 저해되고 뿌리 손상 위험이 있습니다. 급액 pH를 높여 조정합니다.',
+                                                icon: '⬆️'
+                                            });
+                                            
+                                            // pH 급락 + EC 변동
+                                            if (d_drain_ph < -0.5 && Math.abs(d_drain_ec) > 0.3) {
+                                                actions.push({
+                                                    priority: 3,
+                                                    action: '뿌리 상태 점검',
+                                                    delta: '뿌리 색깔, 냄새, 배지 수분 확인',
+                                                    why: '⚠️ pH 급락과 EC 변동이 동시 발생하면 뿌리 부패, 저산소, 병원균 감염이 의심됩니다. 즉시 뿌리 상태를 점검하세요.',
+                                                    icon: '🚨'
+                                                });
+                                            }
+                                            
+                                            // 산 주입 체크
+                                            actions.push({
+                                                priority: 3,
+                                                action: '산 주입 설정 확인',
+                                                delta: '질산/인산 주입 펌프 및 비율 점검',
+                                                why: 'pH 하강이 지속되면 산 주입량이 과다하거나 배지 세정제 잔류가 원인일 수 있습니다.',
+                                                icon: '🔬'
+                                            });
+                                        }
+                                        
+                                        // E) 정상 범위
+                                        if (diagnosis.length === 0) {
+                                            diagnosis.push({
+                                                code: 'OPTIMAL',
+                                                severity: 'OK',
+                                                evidence: '모든 측정값이 목표 범위 내에 있습니다.'
+                                            });
+                                            
+                                            actions.push({
+                                                priority: 1,
+                                                action: '현재 관리 유지',
+                                                delta: '급액 EC/pH, 배액률 현 상태 유지',
+                                                why: '✅ 양액 관리가 매우 양호합니다. 현재 설정을 유지하며 일일 모니터링을 계속하세요.',
+                                                icon: '✅'
+                                            });
+                                        }
+                                        
+                                        // 2-5) VPD 계산 (환경 참고용)
+                                        const svp = 0.6108 * Math.exp((17.27 * temp) / (temp + 237.3));
+                                        const vpd = (svp * (1 - hum / 100)).toFixed(2);
+                                        
+                                        // 2-6) 신뢰도 계산
+                                        let confidence = 0.9;
+                                        const missing = [];
+                                        if (!drain_ec || !drain_ph) { confidence -= 0.2; missing.push('배액 EC/pH'); }
+                                        if (!root_ec || !root_ph) { confidence -= 0.1; missing.push('근권 EC/pH'); }
+                                        
+                                        // 2-7) 결과 표시
+                                        const card = document.getElementById('nutrient-solution-card');
+                                        const list = document.getElementById('nutrient-solution-list');
+                                        
+                                        if (!card || !list) {
+                                            alert('❌ 결과 카드를 찾을 수 없습니다!');
+                                            return;
+                                        }
+                                        
+                                        // 카드 강제 표시
+                                        card.style.cssText = 'display: block !important; visibility: visible !important; opacity: 1 !important; background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); padding: 25px; border-radius: 16px; margin-top: 20px; border: 3px solid #10b981; box-shadow: 0 8px 32px rgba(16, 185, 129, 0.3);';
+                                        card.classList.remove('hidden');
+                                        
+                                        // HTML 생성
+                                        let html = '';
+                                        
+                                        // 헤더
+                                        const cropName = { strawberry: '딸기', tomato: '토마토', melon: '멜론', cucumber: '오이', lettuce: '상추', paprika: '파프리카' }[cropId] || cropId;
+                                        const stageName = { transplant: '정식기', early_growth: '초기생육기', flowering: '개화기', fruit_enlargement: '과실비대기', harvest: '수확기', late_harvest: '수확후기' }[stageId] || stageId;
+                                        
+                                        html += `<li style="background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%); padding: 20px; border-radius: 12px; margin-bottom: 15px; border: 3px solid #3b82f6; box-shadow: 0 4px 16px rgba(59, 130, 246, 0.4);">
+                                            <strong style="color: #93c5fd; font-size: 1.4em; display: block; margin-bottom: 10px;">🔬 전문가 진단 결과</strong>
+                                            <div style="color: #e0e7ff; font-size: 1.1em;">
+                                                <strong>${cropName}</strong> - <strong>${stageName}</strong> | VPD ${vpd} kPa | 신뢰도 ${(confidence * 100).toFixed(0)}%
+                                            </div>
+                                        </li>`;
+                                        
+                                        // 목표 범위
+                                        html += `<li style="background: rgba(30, 41, 59, 0.7); padding: 15px; border-radius: 10px; margin-bottom: 12px; border-left: 5px solid #6366f1;">
+                                            <strong style="color: #a5b4fc; font-size: 1.1em;">🎯 목표 범위</strong><br>
+                                            <span style="color: #cbd5e1;">
+                                                급액: EC ${setpoint.feed_ec[0]}~${setpoint.feed_ec[1]} dS/m, pH ${setpoint.feed_ph[0]}~${setpoint.feed_ph[1]}<br>
+                                                근권: EC ${setpoint.root_ec[0]}~${setpoint.root_ec[1]} dS/m, pH ${setpoint.root_ph[0]}~${setpoint.root_ph[1]}<br>
+                                                배액: EC ${setpoint.drain_ec[0]}~${setpoint.drain_ec[1]} dS/m, pH ${setpoint.drain_ph[0]}~${setpoint.drain_ph[1]}, 배액률 ${setpoint.drain_ratio[0]}~${setpoint.drain_ratio[1]}%
+                                            </span>
+                                        </li>`;
+                                        
+                                        // 진단
+                                        diagnosis.forEach(d => {
+                                            const color = { HIGH: '#ef4444', MED: '#f59e0b', OK: '#10b981' }[d.severity] || '#94a3b8';
+                                            const icon = { SALT_ACCUMULATION: '🚨', OVERLEACH_OR_UNDERFEED: '⚠️', PH_DRIFT_UP: '📈', PH_DRIFT_DOWN: '📉', OPTIMAL: '✅' }[d.code] || '📊';
+                                            html += `<li style="background: rgba(0,0,0,0.4); padding: 15px; border-radius: 10px; margin-bottom: 12px; border-left: 5px solid ${color};">
+                                                <strong style="color: ${color}; font-size: 1.15em;">${icon} ${d.code.replace(/_/g, ' ')}</strong><br>
+                                                <span style="color: #e2e8f0; font-size: 0.95em;">${d.evidence}</span>
+                                            </li>`;
+                                        });
+                                        
+                                        // 조치 사항 (우선순위 정렬)
+                                        actions.sort((a, b) => a.priority - b.priority);
+                                        
+                                        html += `<li style="background: linear-gradient(135deg, #065f46 0%, #047857 100%); padding: 18px; border-radius: 12px; margin: 20px 0 12px 0; border: 3px solid #10b981; box-shadow: 0 4px 16px rgba(16, 185, 129, 0.3);">
+                                            <strong style="color: #a7f3d0; font-size: 1.25em;">💡 조치 사항 (우선순위)</strong>
+                                        </li>`;
+                                        
+                                        actions.forEach((a, idx) => {
+                                            const priorityColor = { 1: '#ef4444', 2: '#f59e0b', 3: '#3b82f6' }[a.priority] || '#94a3b8';
+                                            const priorityBadge = `<span style="background: ${priorityColor}; color: white; padding: 3px 8px; border-radius: 6px; font-size: 0.85em; font-weight: bold; margin-right: 8px;">우선순위 ${a.priority}</span>`;
+                                            
+                                            html += `<li style="background: rgba(0,0,0,0.5); padding: 15px; border-radius: 10px; margin-bottom: 10px; border-left: 5px solid ${priorityColor};">
+                                                ${priorityBadge}
+                                                <strong style="color: #10b981; font-size: 1.1em;">${a.icon} ${a.action}</strong><br>
+                                                <span style="color: #fbbf24; font-size: 0.95em; display: block; margin: 8px 0;">▸ ${a.delta}</span>
+                                                <span style="color: #cbd5e1; font-size: 0.9em; line-height: 1.5;">${a.why}</span>
+                                            </li>`;
+                                        });
+                                        
+                                        // 누락 데이터 경고
+                                        if (missing.length > 0) {
+                                            html += `<li style="background: rgba(251, 191, 36, 0.15); padding: 15px; border-radius: 10px; margin-top: 15px; border: 2px solid #fbbf24;">
+                                                <strong style="color: #fbbf24; font-size: 1.1em;">⚠️ 누락된 측정값</strong><br>
+                                                <span style="color: #fde68a; font-size: 0.95em;">${missing.join(', ')} 데이터가 없습니다. 측정 후 다시 분석하면 더 정확한 진단을 받을 수 있습니다.</span>
+                                            </li>`;
+                                        }
+                                        
+                                        // 삽입
+                                        list.innerHTML = html;
+                                        list.style.display = 'block';
+                                        
+                                        // 스크롤
+                                        setTimeout(() => {
+                                            card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                        }, 150);
+                                        
+                                        console.log('✅ 전문가 진단 완료!', { diagnosis, actions, confidence });
+                                        
+                                    } catch (error) {
+                                        console.error('❌ 분석 오류:', error);
+                                        alert(`분석 중 오류가 발생했습니다: ${error.message}`);
+                                    }
+                                }
+                                
+                                // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+                                // 생리 기반 스마트온실 환경 진단·제어 통합 알고리즘
+                                // (딸기·토마토·상추·오이·파프리카·가지·엽채류·멜론)
+                                // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+                                function showBasicAnalysisResult() {
+                                    try {
+                                        console.log('🌿 생리 기반 진단 시작');
+                                        
+                                        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+                                        // 1. 데이터 수집
+                                        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+                                        const airTemp = parseFloat(document.getElementById('input-temp')?.value) || 0;
+                                        const rh = parseFloat(document.getElementById('input-hum')?.value) || 0;
+                                        const ppfd = parseFloat(document.getElementById('input-light')?.value) || 0;
+                                        const co2 = parseFloat(document.getElementById('input-co2')?.value) || 0;
+                                        const leafTemp = parseFloat(document.getElementById('input-leaf-temp')?.value) || 0;
+                                        const cropId = document.getElementById('select-crop')?.value || 'strawberry';
+                                        const photoperiod = 0; // 광주기 (선택 입력, 현재는 미입력)
+                                        
+                                        // 입력 검증
+                                        if (!airTemp || !rh) {
+                                            alert('⚠️ 대기 온도와 습도는 필수 입력입니다!');
+                                            return;
+                                        }
+                                        
+                                        // 엽온 없을 시 경고
+                                        const hasLeafTemp = leafTemp > 0;
+                                        if (!hasLeafTemp) {
+                                            console.warn('⚠️ 엽온 미입력: 진단 정확도 저하');
+                                        }
+                                        
+                                        console.log('📊 입력:', { airTemp, rh, ppfd, co2, leafTemp, cropId });
+                                        
+                                        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+                                        // 2. 작물별 생리 기준 프로파일 DB
+                                        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+                                        const cropProfiles = {
+                                            strawberry: {
+                                                name: '딸기',
+                                                vpd_min: 0.6, vpd_max: 1.2,
+                                                dli_min: 10, dli_opt: [20, 25],
+                                                co2_target: [800, 1000],
+                                                condensation_margin: 1.0, // °C
+                                                sensitivity: {
+                                                    ca_transport: '매우높음',
+                                                    botrytis: '매우높음',
+                                                    condensation: '매우높음'
+                                                }
+                                            },
+                                            tomato: {
+                                                name: '토마토',
+                                                vpd_min: 0.8, vpd_max: 1.5,
+                                                dli_min: 20, dli_opt: [25, 30],
+                                                co2_target: [800, 1200],
+                                                condensation_margin: 1.0,
+                                                sensitivity: {
+                                                    carbon_limitation: '높음',
+                                                    vpd_range: '넓음'
+                                                }
+                                            },
+                                            lettuce: {
+                                                name: '상추',
+                                                vpd_min: 0.4, vpd_max: 0.9,
+                                                dli_min: 10, dli_opt: [12, 17],
+                                                co2_target: [700, 1000],
+                                                condensation_margin: 0.5,
+                                                sensitivity: {
+                                                    tip_burn: '매우높음',
+                                                    over_dry: '매우높음'
+                                                }
+                                            },
+                                            cucumber: {
+                                                name: '오이',
+                                                vpd_min: 0.7, vpd_max: 1.3,
+                                                dli_min: 15, dli_opt: [20, 25],
+                                                co2_target: [800, 1200],
+                                                condensation_margin: 1.0,
+                                                sensitivity: {
+                                                    humidity_stability: '중요',
+                                                    disease: '높음'
+                                                }
+                                            },
+                                            paprika: {
+                                                name: '파프리카',
+                                                vpd_min: 0.8, vpd_max: 1.4,
+                                                dli_min: 20, dli_opt: [25, 30],
+                                                co2_target: [800, 1200],
+                                                condensation_margin: 1.0,
+                                                sensitivity: {
+                                                    low_temp_condensation: '높음',
+                                                    night_stability: '중요'
+                                                }
+                                            },
+                                            eggplant: {
+                                                name: '가지',
+                                                vpd_min: 0.8, vpd_max: 1.4,
+                                                dli_min: 18, dli_opt: [22, 28],
+                                                co2_target: [800, 1200],
+                                                condensation_margin: 1.0,
+                                                sensitivity: {
+                                                    high_temp_crop: true,
+                                                    high_humidity_disease: '급증'
+                                                }
+                                            },
+                                            leafy: {
+                                                name: '엽채류',
+                                                vpd_min: 0.4, vpd_max: 1.0,
+                                                dli_min: 10, dli_opt: [12, 18],
+                                                co2_target: [700, 1000],
+                                                condensation_margin: 0.5,
+                                                sensitivity: {
+                                                    tip_burn: '높음'
+                                                }
+                                            },
+                                            melon: {
+                                                name: '멜론',
+                                                vpd_min: 0.8, vpd_max: 1.5,
+                                                dli_min: 20, dli_opt: [25, 30],
+                                                co2_target: [800, 1200],
+                                                condensation_margin: 1.0,
+                                                sensitivity: {
+                                                    high_temp_high_light: true,
+                                                    low_vpd_sugar_drop: '급격'
+                                                }
+                                            }
+                                        };
+                                        
+                                        const profile = cropProfiles[cropId] || cropProfiles['strawberry'];
+                                        
+                                        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+                                        // 3. 공통 물리·생리 계산
+                                        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+                                        
+                                        // 3.1 포화수증기압 계산 (Magnus-Tetens 공식, kPa)
+                                        const svp_air = 0.6108 * Math.exp((17.27 * airTemp) / (airTemp + 237.3));
+                                        const svp_leaf = hasLeafTemp ? 0.6108 * Math.exp((17.27 * leafTemp) / (leafTemp + 237.3)) : svp_air;
+                                        
+                                        // 3.2 실제 수증기압 (kPa)
+                                        const vp_actual = svp_air * (rh / 100);
+                                        
+                                        // 3.3 VPD 계산
+                                        const vpd_air = (svp_air - vp_actual).toFixed(2); // 공기 기준 (참고용)
+                                        const vpd_leaf = hasLeafTemp ? (svp_leaf - vp_actual).toFixed(2) : vpd_air; // 엽 기준 (진단 기준)
+                                        
+                                        console.log(`💧 VPD: 공기 ${vpd_air} kPa, 엽 ${vpd_leaf} kPa`);
+                                        
+                                        // 3.4 이슬점 및 결로 판단
+                                        const dewPoint = (237.3 * Math.log(vp_actual / 0.6108)) / (17.27 - Math.log(vp_actual / 0.6108));
+                                        const condensationRisk = hasLeafTemp && (leafTemp <= (dewPoint + profile.condensation_margin));
+                                        const highRH = rh >= 90;
+                                        
+                                        console.log(`🌡️ 이슬점: ${dewPoint.toFixed(1)}°C, 엽온: ${leafTemp || 'N/A'}°C, 결로위험: ${condensationRisk}`);
+                                        
+                                        // 3.5 DLI 계산 (선택)
+                                        let dli = null;
+                                        if (ppfd > 0 && photoperiod > 0) {
+                                            dli = (ppfd * photoperiod * 3600 / 1000000).toFixed(1); // mol/m²/day
+                                        }
+                                        
+                                        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+                                        // 4. 상태 진단 로직 (우선순위 순서 고정)
+                                        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+                                        
+                                        const diagnosis = [];
+                                        const actions = [];
+                                        let criticalState = null;
+                                        
+                                        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+                                        // 4.1 단계 1: 결로·병해 위험 판단 (절대 최우선)
+                                        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+                                        if (condensationRisk || (highRH && parseFloat(vpd_leaf) < profile.vpd_min)) {
+                                            criticalState = 'CONDENSATION_DISEASE_RISK';
+                                            diagnosis.push({
+                                                code: 'CONDENSATION_HIGH',
+                                                severity: 'CRITICAL',
+                                                icon: '🚨',
+                                                title: '결로·병해 고위험 상태',
+                                                message: `엽온 ${leafTemp}°C ≤ 이슬점 ${dewPoint.toFixed(1)}°C (여유: ${profile.condensation_margin}°C) 또는 고습(${rh}%) + 저VPD 상태`,
+                                                evidence: `${profile.name}는 ${profile.sensitivity.botrytis || profile.sensitivity.condensation || '결로'} 민감 작물`
+                                            });
+                                            
+                                            // 즉시 조치 (병 예방 최우선)
+                                            actions.push({
+                                                priority: 1,
+                                                action: '난방 즉시 가동',
+                                                target: '엽온 상승 (↑2~3°C)',
+                                                why: '결로 제거 및 병원균 활동 억제',
+                                                icon: '🔥'
+                                            });
+                                            
+                                            actions.push({
+                                                priority: 1,
+                                                action: '제습 또는 환기',
+                                                target: `습도 → ${profile.vpd_min < 0.6 ? '70' : '60'}% 이하`,
+                                                why: 'VPD 상승 및 포자 비산 억제',
+                                                icon: '💨'
+                                            });
+                                            
+                                            actions.push({
+                                                priority: 1,
+                                                action: '가습 중단',
+                                                target: '즉시',
+                                                why: '습도 추가 상승 방지',
+                                                icon: '🚫'
+                                            });
+                                            
+                                            console.log('🚨 [CRITICAL] 결로 위험 → 생육 진단 중단');
+                                        }
+                                        
+                                        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+                                        // 4.2 단계 2: VPD 기반 생리 상태 판단
+                                        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+                                        if (!criticalState) {
+                                            const vpd_value = parseFloat(vpd_leaf);
+                                            
+                                            if (vpd_value < profile.vpd_min) {
+                                                // VPD 낮음 → 증산 부족
+                                                const severity = vpd_value < (profile.vpd_min * 0.7) ? 'HIGH' : 'MEDIUM';
+                                                diagnosis.push({
+                                                    code: 'VPD_LOW',
+                                                    severity: severity,
+                                                    icon: severity === 'HIGH' ? '🚨' : '⚠️',
+                                                    title: 'VPD 낮음 - 증산 부족 상태',
+                                                    message: `VPD ${vpd_leaf} kPa < 목표 ${profile.vpd_min} kPa`,
+                                                    evidence: `Ca 이동 제한, ${profile.sensitivity.tip_burn ? '팁번 위험, ' : ''}생육 병목 발생 중`
+                                                });
+                                                
+                                                // 조치
+                                                actions.push({
+                                                    priority: 1,
+                                                    action: '난방 가동',
+                                                    target: `기온 ↑2~3°C (현재 ${airTemp}°C)`,
+                                                    why: 'VPD 상승 (포화수증기압 증가)',
+                                                    icon: '🔥'
+                                                });
+                                                
+                                                actions.push({
+                                                    priority: 1,
+                                                    action: '제습 또는 환기',
+                                                    target: `습도 → ${Math.max(50, rh - 10)}%`,
+                                                    why: 'VPD 상승 (실제 수증기압 감소)',
+                                                    icon: '💨'
+                                                });
+                                                
+                                                if (profile.sensitivity.ca_transport === '매우높음') {
+                                                    actions.push({
+                                                        priority: 2,
+                                                        action: `${profile.name} Ca 엽면살포`,
+                                                        target: '주 2~3회',
+                                                        why: '증산 부족 시 Ca 이동 경로 보조',
+                                                        icon: '🍃'
+                                                    });
+                                                }
+                                                
+                                            } else if (vpd_value > profile.vpd_max) {
+                                                // VPD 높음 → 과건조
+                                                const severity = vpd_value > (profile.vpd_max * 1.3) ? 'HIGH' : 'MEDIUM';
+                                                diagnosis.push({
+                                                    code: 'VPD_HIGH',
+                                                    severity: severity,
+                                                    icon: severity === 'HIGH' ? '🚨' : '⚠️',
+                                                    title: 'VPD 높음 - 과건조 상태',
+                                                    message: `VPD ${vpd_leaf} kPa > 목표 ${profile.vpd_max} kPa`,
+                                                    evidence: `기공 폐쇄, 광합성 제한, ${profile.sensitivity.over_dry === '매우높음' ? '즉시 조치 필요' : '수분 스트레스'}`
+                                                });
+                                                
+                                                // 조치
+                                                actions.push({
+                                                    priority: 1,
+                                                    action: '가습 가동',
+                                                    target: `습도 → ${Math.min(85, rh + 15)}%`,
+                                                    why: 'VPD 하강 (실제 수증기압 증가)',
+                                                    icon: '💧'
+                                                });
+                                                
+                                                if (ppfd > profile.dli_opt[1] * 50) { // 과다 광도 추정
+                                                    actions.push({
+                                                        priority: 1,
+                                                        action: '차광 또는 냉방',
+                                                        target: '일사량 감소 또는 기온 ↓2°C',
+                                                        why: 'VPD 하강 (엽온/기온 저하)',
+                                                        icon: '☁️'
+                                                    });
+                                                }
+                                                
+                                            } else {
+                                                // VPD 적정
+                                                diagnosis.push({
+                                                    code: 'VPD_OPTIMAL',
+                                                    severity: 'OK',
+                                                    icon: '✅',
+                                                    title: 'VPD 적정 - 생리 안정 상태',
+                                                    message: `VPD ${vpd_leaf} kPa (목표: ${profile.vpd_min}~${profile.vpd_max} kPa)`,
+                                                    evidence: '증산, 양분 이동, 기공 개도 정상 범위'
+                                                });
+                                            }
+                                        }
+                                        
+                                        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+                                        // 4.3 단계 3: 탄소 제한 판단
+                                        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+                                        if (!criticalState && parseFloat(vpd_leaf) >= profile.vpd_min && parseFloat(vpd_leaf) <= profile.vpd_max) {
+                                            // VPD 정상일 때만 탄소 제한 평가
+                                            
+                                            // 광 부족 판단
+                                            if (ppfd > 0 && ppfd < (profile.dli_min * 40)) { // PPFD 대략 환산
+                                                diagnosis.push({
+                                                    code: 'LIGHT_INSUFFICIENT',
+                                                    severity: 'MEDIUM',
+                                                    icon: '⚠️',
+                                                    title: '광량 부족',
+                                                    message: `PPFD ${ppfd} µmol/m²/s (최소 필요: ~${profile.dli_min * 40})`,
+                                                    evidence: `DLI < ${profile.dli_min} mol/m²/day 추정, 구조적 생육 제한`
+                                                });
+                                                
+                                                actions.push({
+                                                    priority: 2,
+                                                    action: '보광 가동',
+                                                    target: `PPFD → ${profile.dli_opt[0] * 50} µmol/m²/s 이상`,
+                                                    why: '광합성 속도 회복, 탄소 공급 확보',
+                                                    icon: '💡'
+                                                });
+                                            }
+                                            
+                                            // CO₂ 부족 판단
+                                            if (co2 > 0 && co2 < profile.co2_target[0]) {
+                                                diagnosis.push({
+                                                    code: 'CO2_INSUFFICIENT',
+                                                    severity: 'MEDIUM',
+                                                    icon: '⚠️',
+                                                    title: 'CO₂ 부족',
+                                                    message: `${co2} ppm < 목표 ${profile.co2_target[0]}~${profile.co2_target[1]} ppm`,
+                                                    evidence: '광합성 주 제한 요인'
+                                                });
+                                                
+                                                actions.push({
+                                                    priority: 2,
+                                                    action: 'CO₂ 공급',
+                                                    target: `${profile.co2_target[0]}~${profile.co2_target[1]} ppm`,
+                                                    why: '광합성 속도 증대 (특히 고광 시)',
+                                                    icon: '🌱'
+                                                });
+                                            }
+                                            
+                                            // 모두 정상
+                                            if (diagnosis.filter(d => d.severity !== 'OK').length === 0) {
+                                                diagnosis.push({
+                                                    code: 'ALL_OPTIMAL',
+                                                    severity: 'OK',
+                                                    icon: '✅',
+                                                    title: '환경 최적 상태',
+                                                    message: 'VPD, 광, CO₂ 모두 적정 범위',
+                                                    evidence: `${profile.name} 생육에 이상적인 환경`
+                                                });
+                                                
+                                                actions.push({
+                                                    priority: 3,
+                                                    action: '현재 환경 유지',
+                                                    target: '설정값 고정',
+                                                    why: '생리 안정 상태, 에너지 최적화 가능',
+                                                    icon: '✅'
+                                                });
+                                            }
+                                        }
+                                        
+                                        // 결과 표시
+                                        const card = document.getElementById('nutrient-solution-card');
+                                        const list = document.getElementById('nutrient-solution-list');
+                                        
+                                        if (!card || !list) {
+                                            alert('❌ 결과 카드를 찾을 수 없습니다!');
+                                            return;
+                                        }
+                                        
+                                        // 카드 강제 표시
+                                        card.style.cssText = 'display: block !important; visibility: visible !important; opacity: 1 !important; background: linear-gradient(135deg, #064e3b 0%, #065f46 100%); padding: 25px; border-radius: 16px; margin-top: 20px; border: 3px solid #10b981; box-shadow: 0 8px 32px rgba(16, 185, 129, 0.3);';
+                                        card.classList.remove('hidden');
+                                        
+                                        // HTML 생성
+                                        let html = '';
+                                        
+                                        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+                                        // 5. 결과 HTML 생성
+                                        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+                                        
+                                        // 헤더
+                                        const severityColor = criticalState ? '#ef4444' : (diagnosis.some(d => d.severity === 'HIGH' || d.severity === 'MEDIUM') ? '#f59e0b' : '#10b981');
+                                        
+                                        html += `<li style="background: linear-gradient(135deg, #0c4a6e 0%, #075985 100%); padding: 22px; border-radius: 14px; margin-bottom: 18px; border: 3px solid ${severityColor}; box-shadow: 0 6px 24px rgba(${criticalState ? '239, 68, 68' : '16, 185, 129'}, 0.4);">
+                                            <strong style="color: #bae6fd; font-size: 1.5em; display: block; margin-bottom: 12px;">🔬 생리 기반 환경 진단</strong>
+                                            <div style="color: #e0f2fe; font-size: 1.05em; line-height: 1.7;">
+                                                <strong>${profile.name}</strong> | VPD(엽) ${vpd_leaf} kPa ${hasLeafTemp ? '' : '(엽온 미입력)'}
+                                                <br>기온 ${airTemp}°C | 습도 ${rh}% | 이슬점 ${dewPoint.toFixed(1)}°C
+                                                ${ppfd > 0 ? `<br>광도 ${ppfd} µmol/m²/s` : ''} ${co2 > 0 ? `| CO₂ ${co2} ppm` : ''}
+                                            </div>
+                                        </li>`;
+                                        
+                                        // 진단 결과
+                                        diagnosis.forEach(d => {
+                                            const color = {
+                                                'CRITICAL': '#ef4444',
+                                                'HIGH': '#f97316',
+                                                'MEDIUM': '#f59e0b',
+                                                'OK': '#10b981'
+                                            }[d.severity] || '#94a3b8';
+                                            
+                                            html += `<li style="background: rgba(0,0,0,0.5); padding: 20px; border-radius: 12px; margin-bottom: 14px; border-left: 6px solid ${color};">
+                                                <div style="display: flex; align-items: center; margin-bottom: 10px;">
+                                                    <span style="font-size: 1.8em; margin-right: 12px;">${d.icon}</span>
+                                                    <strong style="color: ${color}; font-size: 1.3em;">${d.title}</strong>
+                                                </div>
+                                                <div style="margin-left: 45px;">
+                                                    <div style="color: #e2e8f0; font-size: 1.1em; margin-bottom: 8px; font-weight: 500;">${d.message}</div>
+                                                    <div style="color: #cbd5e1; font-size: 0.95em; line-height: 1.6;">${d.evidence}</div>
+                                                </div>
+                                            </li>`;
+                                        });
+                                        
+                                        // 조치 사항 (우선순위 정렬)
+                                        if (actions.length > 0) {
+                                            actions.sort((a, b) => a.priority - b.priority);
+                                            
+                                            html += `<li style="background: linear-gradient(135deg, #065f46 0%, #047857 100%); padding: 20px; border-radius: 14px; margin: 24px 0 16px 0; border: 3px solid #10b981; box-shadow: 0 6px 24px rgba(16, 185, 129, 0.35);">
+                                                <strong style="color: #a7f3d0; font-size: 1.35em;">💡 실행 우선순위 조치 사항</strong>
+                                            </li>`;
+                                            
+                                            actions.forEach(a => {
+                                                const priorityColor = { 1: '#ef4444', 2: '#f59e0b', 3: '#3b82f6' }[a.priority] || '#94a3b8';
+                                                const priorityLabel = { 1: '최우선', 2: '2순위', 3: '3순위' }[a.priority] || '참고';
+                                                
+                                                html += `<li style="background: rgba(0,0,0,0.6); padding: 18px; border-radius: 11px; margin-bottom: 12px; border-left: 6px solid ${priorityColor};">
+                                                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">
+                                                        <div style="display: flex; align-items: center;">
+                                                            <span style="font-size: 1.6em; margin-right: 10px;">${a.icon}</span>
+                                                            <strong style="color: #f0fdfa; font-size: 1.15em;">${a.action}</strong>
+                                                        </div>
+                                                        <span style="background: ${priorityColor}; color: white; padding: 4px 12px; border-radius: 8px; font-size: 0.85em; font-weight: bold;">${priorityLabel}</span>
+                                                    </div>
+                                                    <div style="margin-left: 42px;">
+                                                        <div style="color: #fbbf24; font-size: 1em; margin-bottom: 6px;">▸ ${a.target}</div>
+                                                        <div style="color: #cbd5e1; font-size: 0.92em; line-height: 1.6;">${a.why}</div>
+                                                    </div>
+                                                </li>`;
+                                            });
+                                        }
+                                        
+                                        // 종합 상태
+                                        const hasCritical = diagnosis.some(d => d.severity === 'CRITICAL');
+                                        const hasHigh = diagnosis.some(d => d.severity === 'HIGH');
+                                        const allOK = diagnosis.every(d => d.severity === 'OK');
+                                        
+                                        let summaryIcon = '✅';
+                                        let summaryText = `${profile.name} 생육 환경이 최적 상태입니다!`;
+                                        let summaryColor = '#10b981';
+                                        
+                                        if (hasCritical) {
+                                            summaryIcon = '🚨';
+                                            summaryText = '긴급 조치 필요! 병해 또는 생리장해 고위험 상태입니다.';
+                                            summaryColor = '#ef4444';
+                                        } else if (hasHigh) {
+                                            summaryIcon = '⚠️';
+                                            summaryText = '즉시 조치 권장: 생육 병목 또는 스트레스 상태입니다.';
+                                            summaryColor = '#f59e0b';
+                                        }
+                                        
+                                        html += `<li style="background: linear-gradient(135deg, rgba(${allOK ? '5, 150, 105' : (hasCritical ? '239, 68, 68' : '245, 158, 11')}, 0.15) 0%, rgba(0,0,0,0.3) 100%); padding: 24px; border-radius: 14px; margin-top: 24px; border: 3px solid ${summaryColor};">
+                                            <div style="text-align: center;">
+                                                <div style="font-size: 3.5em; margin-bottom: 14px;">${summaryIcon}</div>
+                                                <strong style="color: ${summaryColor}; font-size: 1.4em; line-height: 1.5;">${summaryText}</strong>
+                                            </div>
+                                        </li>`;
+                                        
+                                        // 엽온 미입력 경고
+                                        if (!hasLeafTemp) {
+                                            html += `<li style="background: rgba(251, 191, 36, 0.15); padding: 18px; border-radius: 11px; margin-top: 20px; border: 2px solid #fbbf24;">
+                                                <strong style="color: #fbbf24; font-size: 1.15em;">⚠️ 엽온 미입력</strong><br>
+                                                <span style="color: #fde68a; font-size: 0.95em; line-height: 1.6;">
+                                                    엽온은 이 알고리즘의 필수 전제입니다. 엽온 없이는 정확한 VPD와 결로 판단이 불가능합니다.<br>
+                                                    엽온을 측정하여 입력하면 <strong>훨씬 정확한 생리 진단</strong>을 받을 수 있습니다.
+                                                </span>
+                                            </li>`;
+                                        }
+                                        
+                                        // 프리미엄 안내
+                                        html += `<li style="background: linear-gradient(135deg, rgba(99, 102, 241, 0.12) 0%, rgba(168, 85, 247, 0.12) 100%); padding: 22px; border-radius: 13px; margin-top: 22px; border: 2px dashed #a78bfa;">
+                                            <div style="text-align: center; color: #d8b4fe;">
+                                                <div style="font-size: 2.2em; margin-bottom: 12px;">💎</div>
+                                                <strong style="font-size: 1.2em; display: block; margin-bottom: 10px; color: #c4b5fd;">프리미엄 대쉬보드로 전환하면</strong>
+                                                <div style="font-size: 0.98em; line-height: 1.7;">
+                                                    <strong style="color: #a78bfa;">양액 EC/pH 통합 분석</strong>, 염류 축적 진단, 영양 밸런스 최적화,<br>
+                                                    근권 환경 진단 등 <strong style="color: #c4b5fd;">전문가 수준의 통합 솔루션</strong>을 받을 수 있습니다!
+                                                </div>
+                                            </div>
+                                        </li>`;
+                                        
+                                        // 삽입
+                                        list.innerHTML = html;
+                                        list.style.display = 'block';
+                                        
+                                        // 스크롤
+                                        setTimeout(() => {
+                                            card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                        }, 150);
+                                        
+                                        console.log('✅ 생리 기반 진단 완료!', {
+                                            crop: profile.name,
+                                            vpd_leaf,
+                                            diagnosis: diagnosis.map(d => d.code),
+                                            actions: actions.length,
+                                            critical: !!criticalState
+                                        });
+                                        
+                                    } catch (error) {
+                                        console.error('❌ 진단 오류:', error);
+                                        alert(`분석 중 오류가 발생했습니다: ${error.message}\n\n개발자 콘솔(F12)을 확인해주세요.`);
+                                    }
+                                }
+                                </script>
                             </form>
 
                             <!-- Nutrient Solution Results -->
-                            <div id="nutrient-solution-card" class="nutrient-solution-card glass hidden">
+                            <div 
+                                id="nutrient-solution-card" 
+                                class="nutrient-solution-card glass"
+                                style="display: block; visibility: visible; opacity: 1; margin-top: 20px;">
                                 <div class="solution-header">
-                                    <h4>양액 분석 결과</h4>
+                                    <h4>🔬 양액 분석 결과</h4>
                                     <div class="solution-status">
                                         <span class="status-badge" id="nutrient-status-badge">분석 대기</span>
                                         <span class="target-info" id="nutrient-target-info">목표값을 확인하세요</span>
                                     </div>
                                 </div>
-                                <ul class="solution-list" id="nutrient-solution-list">
-                                    <li class="no-solution">데이터를 입력하고 분석을 실행하세요.</li>
+                                <ul class="solution-list" id="nutrient-solution-list" style="display: block;">
+                                    <li class="no-solution">데이터를 입력하고 "통합 분석 및 데이터 반영" 버튼을 클릭하세요.</li>
                                 </ul>
                             </div>
 

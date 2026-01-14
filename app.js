@@ -155,6 +155,14 @@ function initNavigation() {
                     f.style.display = ''; // 빈 값으로 CSS 기본값 사용
                     console.log('✅ 양액 입력 폼 표시 (app.js)');
                 });
+                
+                // 베이직 전용 버튼 숨김
+                const basicFields = document.querySelectorAll('.basic-only');
+                basicFields.forEach(f => {
+                    f.classList.add('hidden');
+                    f.style.display = 'none';
+                    console.log('✅ 베이직 버튼 숨김 (app.js)');
+                });
             } else if (mode === 'basic') {
                 isPremiumActive = false;
                 console.log('🌿 Basic Mode Activated via Tab (app.js)');
@@ -165,6 +173,14 @@ function initNavigation() {
                     f.classList.add('hidden');
                     f.style.display = '';
                     console.log('✅ 양액 입력 폼 숨김 (app.js)');
+                });
+                
+                // 베이직 전용 버튼 표시
+                const basicFields = document.querySelectorAll('.basic-only');
+                basicFields.forEach(f => {
+                    f.classList.remove('hidden');
+                    f.style.display = '';
+                    console.log('✅ 베이직 버튼 표시 (app.js)');
                 });
             }
 
@@ -237,23 +253,118 @@ function initToggles() {
 }
 
 // Weather & Geolocation Implementation
-async function initWeather() {
-    // 페이지 로드 시 서울 기준 기본 날씨만 로드 (자동 위치 요청 없음)
-    const locElement = document.getElementById('current-location');
-    if (locElement) locElement.textContent = '서울 (기본값)';
+// 한국 주요 지역 좌표 데이터
+const koreanCities = [
+    { name: '서울', lat: 37.5665, lon: 126.9780 },
+    { name: '부산', lat: 35.1796, lon: 129.0756 },
+    { name: '대구', lat: 35.8714, lon: 128.6014 },
+    { name: '인천', lat: 37.4563, lon: 126.7052 },
+    { name: '광주', lat: 35.1595, lon: 126.8526 },
+    { name: '대전', lat: 36.3504, lon: 127.3845 },
+    { name: '울산', lat: 35.5384, lon: 129.3114 },
+    { name: '세종', lat: 36.4800, lon: 127.2890 },
+    { name: '경기', lat: 37.4138, lon: 127.5183 },
+    { name: '강원', lat: 37.8228, lon: 128.1555 },
+    { name: '충북', lat: 36.6357, lon: 127.4917 },
+    { name: '충남', lat: 36.5184, lon: 126.8000 },
+    { name: '전북', lat: 35.7175, lon: 127.1530 },
+    { name: '전남', lat: 34.8160, lon: 126.4630 },
+    { name: '경북', lat: 36.4919, lon: 128.8889 },
+    { name: '경남', lat: 35.4606, lon: 128.2132 },
+    { name: '제주', lat: 33.4996, lon: 126.5312 }
+];
 
-    await fetchWeatherData(37.5665, 126.9780);
-    console.log('📍 기본 위치(서울) 날씨 로드 완료');
+// 위도/경도로부터 가장 가까운 한국 도시명 찾기
+function getLocationName(lat, lon) {
+    let closestCity = koreanCities[0];
+    let minDistance = Infinity;
 
-    // "내 위치 날씨" 버튼 클릭 핸들러 등록
-    const locationBtn = document.getElementById('get-my-location-btn');
-    if (locationBtn) {
-        locationBtn.addEventListener('click', getMyLocationWeather);
+    for (const city of koreanCities) {
+        // 유클리드 거리 계산 (대략적)
+        const distance = Math.sqrt(
+            Math.pow(lat - city.lat, 2) + Math.pow(lon - city.lon, 2)
+        );
+        
+        if (distance < minDistance) {
+            minDistance = distance;
+            closestCity = city;
+        }
+    }
+
+    return closestCity.name;
+}
+
+function initWeather() {
+    console.log('🌤️ [initWeather] 시작');
+    
+    try {
+        // DOM 요소 확인
+        const tempEl = document.getElementById('out-temp');
+        const humEl = document.getElementById('out-hum');
+        const windEl = document.getElementById('out-wind');
+        const rainEl = document.getElementById('out-rain');
+        const locElement = document.getElementById('current-location');
+        const locationBtn = document.getElementById('get-my-location-btn');
+
+        console.log('📋 [initWeather] DOM 요소 상태:', {
+            tempEl: tempEl ? '✅' : '❌',
+            humEl: humEl ? '✅' : '❌',
+            windEl: windEl ? '✅' : '❌',
+            rainEl: rainEl ? '✅' : '❌',
+            locElement: locElement ? '✅' : '❌',
+            locationBtn: locationBtn ? '✅' : '❌'
+        });
+
+        // HTML에 이미 기본값이 있으므로, 실제 날씨 데이터만 백그라운드로 로드
+        console.log('🌍 [initWeather] 실제 날씨 데이터 로드 시작 (백그라운드)');
+        
+        // 비동기로 날씨 데이터 로드 (에러가 나도 기본값 유지)
+        setTimeout(() => {
+            fetchWeatherData(37.5665, 126.9780)
+                .then(() => console.log('✅ [initWeather] 실제 날씨 데이터 로드 성공'))
+                .catch(err => console.log('⚠️ [initWeather] 날씨 API 실패, HTML 기본값 유지:', err.message));
+        }, 100);
+
+        // "내 위치 날씨" 버튼 클릭 핸들러 등록
+        if (locationBtn) {
+            console.log('✅ [initWeather] 버튼 요소 찾음:', locationBtn);
+            
+            // onclick 직접 할당 (가장 확실한 방법)
+            locationBtn.onclick = function(e) {
+                e.preventDefault();
+                console.log('🔘 [버튼 클릭] 내 위치 날씨 버튼 onclick 실행됨!');
+                getMyLocationWeather();
+                return false;
+            };
+            
+            // addEventListener도 추가 (이중 보험)
+            locationBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                console.log('🔘 [버튼 클릭] addEventListener도 실행됨!');
+            }, { once: false });
+            
+            console.log('✅ [initWeather] 버튼 이벤트 핸들러 등록 완료 (onclick + addEventListener)');
+            
+            // 버튼 테스트용 임시 스타일
+            locationBtn.style.cursor = 'pointer';
+            locationBtn.style.pointerEvents = 'auto';
+            
+        } else {
+            console.error('❌ [initWeather] get-my-location-btn 버튼을 찾을 수 없음!');
+            console.log('📋 [디버그] 현재 페이지의 모든 버튼:', document.querySelectorAll('button'));
+        }
+
+        console.log('✅ [initWeather] 초기화 완료');
+        
+    } catch (error) {
+        console.error('❌ [initWeather] 오류:', error);
     }
 }
 
 // 사용자가 버튼 클릭 시 위치 기반 날씨 로드
 async function getMyLocationWeather() {
+    console.log('🔘 내 위치 날씨 버튼 클릭됨');
+    
     const locElement = document.getElementById('current-location');
     const tempElement = document.getElementById('out-temp');
     const humElement = document.getElementById('out-hum');
@@ -266,14 +377,18 @@ async function getMyLocationWeather() {
         btn.disabled = true;
         btn.innerHTML = '<i data-lucide="loader-2" class="spin"></i> 위치 확인중...';
         if (typeof lucide !== 'undefined') lucide.createIcons();
+        console.log('✅ 버튼 상태 변경: 위치 확인중');
     }
     if (locElement) locElement.textContent = '위치 확인 중...';
 
     if (!("geolocation" in navigator)) {
+        console.error('❌ Geolocation API 미지원');
         alert('이 브라우저는 위치 정보를 지원하지 않습니다.');
         resetLocationButton();
         return;
     }
+
+    console.log('📍 위치 정보 요청 시작...');
 
     try {
         const position = await new Promise((resolve, reject) => {
@@ -291,52 +406,137 @@ async function getMyLocationWeather() {
                     reject(err);
                 },
                 {
-                    enableHighAccuracy: true,
+                    enableHighAccuracy: false, // 빠른 응답을 위해 정밀도 낮춤
                     timeout: 10000,
-                    maximumAge: 60000 // 1분 캐시
+                    maximumAge: 300000 // 5분 캐시
                 }
             );
         });
 
         const { latitude, longitude } = position.coords;
+        console.log(`📍 위치 확인 성공: 위도 ${latitude.toFixed(4)}, 경도 ${longitude.toFixed(4)}`);
 
-        const response = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current_weather=true&hourly=relativehumidity_2m,precipitation_probability`);
+        // 지역 이름 추정 (한국 주요 도시 기준)
+        const locationName = getLocationName(latitude, longitude);
+        console.log(`🏙️ 추정 지역: ${locationName}`);
+
+        // 날씨 API 호출
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 8000);
+
+        console.log('🌤️ 날씨 API 요청 시작...');
+        const response = await fetch(
+            `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current_weather=true&hourly=relativehumidity_2m,precipitation_probability&timezone=auto`,
+            { 
+                signal: controller.signal,
+                mode: 'cors'
+            }
+        );
+
+        clearTimeout(timeoutId);
+
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+
         const data = await response.json();
+        console.log('✅ 날씨 API 응답 성공:', {
+            temp: data.current_weather?.temperature,
+            windspeed: data.current_weather?.windspeed
+        });
+
+        // 안전한 데이터 추출
+        const currentHour = new Date().getHours();
+        const temp = data.current_weather?.temperature ?? 20;
+        const windspeed = data.current_weather?.windspeed ?? 3;
+        const humidity = data.hourly?.relativehumidity_2m?.[currentHour] ?? 65;
+        const rain = data.hourly?.precipitation_probability?.[currentHour] ?? 20;
 
         // Update UI with real location data
-        if (tempElement) tempElement.textContent = data.current_weather.temperature;
-        if (windElement) windElement.textContent = data.current_weather.windspeed;
+        if (tempElement) {
+            tempElement.textContent = temp;
+            tempElement.style.color = '#10b981'; // 녹색으로 강조
+            setTimeout(() => { tempElement.style.color = ''; }, 2000);
+        }
+        if (windElement) windElement.textContent = windspeed;
+        if (humElement) humElement.textContent = humidity;
+        if (rainElement) rainElement.textContent = rain;
 
-        const currentHour = new Date().getHours();
-        if (humElement) humElement.textContent = data.hourly.relativehumidity_2m[currentHour];
-        if (rainElement) rainElement.textContent = data.hourly.precipitation_probability[currentHour];
-
-        if (locElement) locElement.textContent = `위도 ${latitude.toFixed(2)}, 경도 ${longitude.toFixed(2)} (실시간)`;
+        // 위치 정보 업데이트 (지역명 + 좌표)
+        if (locElement) {
+            locElement.textContent = `${locationName} (실시간) - ${latitude.toFixed(2)}°N, ${longitude.toFixed(2)}°E`;
+            locElement.style.color = '#10b981'; // 녹색으로 강조
+            setTimeout(() => { locElement.style.color = ''; }, 3000);
+        }
 
         // Update Top Bar Weather
         const topWeatherText = document.querySelector('.weather-info span');
-        if (topWeatherText) topWeatherText.textContent = `${data.current_weather.temperature}°C 실외`;
+        if (topWeatherText) topWeatherText.textContent = `${temp}°C ${locationName}`;
 
-        console.log('🌍 실시간 위치 날씨 업데이트 완료');
+        console.log('🌍 실시간 위치 날씨 업데이트 완료:', {
+            location: locationName,
+            temp: temp + '°C',
+            humidity: humidity + '%',
+            windspeed: windspeed + ' km/h',
+            rain: rain + '%'
+        });
 
         // 성공 표시
         if (btn) {
-            btn.innerHTML = '<i data-lucide="check"></i> 완료!';
+            btn.innerHTML = '<i data-lucide="check-circle"></i> 완료!';
+            btn.style.backgroundColor = '#10b981';
             if (typeof lucide !== 'undefined') lucide.createIcons();
-            setTimeout(resetLocationButton, 2000);
+            setTimeout(() => {
+                resetLocationButton();
+                if (btn) btn.style.backgroundColor = '';
+            }, 2000);
         }
 
     } catch (error) {
-        console.error('위치 정보 오류:', error);
+        console.error('❌ 위치/날씨 오류:', error.name, error.message, error.code);
 
         let errorMsg = '위치 정보를 가져올 수 없습니다.';
-        if (error.code === 1) errorMsg = '위치 권한이 거부되었습니다.';
-        else if (error.code === 2) errorMsg = '위치를 확인할 수 없습니다.';
-        else if (error.code === 3 || error.message.includes('시간 초과')) errorMsg = '위치 확인 시간이 초과되었습니다.';
+        let userMsg = '';
+        
+        if (error.code === 1) {
+            errorMsg = '위치 권한이 거부되었습니다';
+            userMsg = '브라우저 설정에서 위치 권한을 허용해주세요.';
+        } else if (error.code === 2) {
+            errorMsg = '위치를 확인할 수 없습니다';
+            userMsg = 'GPS 신호가 약하거나 위치 서비스가 꺼져 있습니다.';
+        } else if (error.code === 3 || error.message.includes('시간 초과')) {
+            errorMsg = '위치 확인 시간이 초과되었습니다';
+            userMsg = '네트워크 연결을 확인해주세요.';
+        } else if (error.name === 'AbortError') {
+            errorMsg = '날씨 API 응답 시간 초과';
+            userMsg = '날씨 서버 응답이 지연되고 있습니다.';
+        }
 
-        if (locElement) locElement.textContent = '서울 (기본값) - ' + errorMsg;
-        alert(errorMsg + '\n서울 기준 날씨가 표시됩니다.');
-        resetLocationButton();
+        console.log(`⚠️ ${errorMsg}. ${userMsg}`);
+        
+        // 사용자 친화적 알림
+        if (btn) {
+            btn.innerHTML = '<i data-lucide="x-circle"></i> 실패';
+            btn.style.backgroundColor = '#ef4444';
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+        }
+        
+        if (locElement) {
+            locElement.textContent = `서울 (기본값) - ${errorMsg}`;
+            locElement.style.color = '#f59e0b';
+            setTimeout(() => { 
+                locElement.textContent = '서울 (기본값)';
+                locElement.style.color = ''; 
+            }, 3000);
+        }
+        
+        // 서울 날씨로 다시 로드
+        await fetchWeatherData(37.5665, 126.9780);
+        
+        setTimeout(() => {
+            resetLocationButton();
+            if (btn) btn.style.backgroundColor = '';
+        }, 2000);
     }
 }
 
@@ -354,7 +554,19 @@ async function fetchWeatherData(lat, lon) {
     try {
         console.log(`🌤️ 날씨 데이터 요청: lat=${lat}, lon=${lon}`);
 
-        const response = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true&hourly=relativehumidity_2m,precipitation_probability`);
+        // CORS 방지를 위한 타임아웃 설정
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 8000);
+
+        const response = await fetch(
+            `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true&hourly=relativehumidity_2m,precipitation_probability&timezone=auto`,
+            { 
+                signal: controller.signal,
+                mode: 'cors'
+            }
+        );
+
+        clearTimeout(timeoutId);
 
         if (!response.ok) {
             throw new Error(`HTTP ${response.status}: ${response.statusText}`);
@@ -363,29 +575,56 @@ async function fetchWeatherData(lat, lon) {
         const data = await response.json();
         console.log('✅ 날씨 API 응답:', data);
 
+        // 안전한 데이터 추출
+        const currentHour = new Date().getHours();
+        const temp = data.current_weather?.temperature ?? 22;
+        const windspeed = data.current_weather?.windspeed ?? 5;
+        const humidity = data.hourly?.relativehumidity_2m?.[currentHour] ?? 65;
+        const rain = data.hourly?.precipitation_probability?.[currentHour] ?? 20;
+
+        // UI 업데이트
         const tempEl = document.getElementById('out-temp');
         const humEl = document.getElementById('out-hum');
         const windEl = document.getElementById('out-wind');
         const rainEl = document.getElementById('out-rain');
 
-        if (tempEl) tempEl.textContent = data.current_weather.temperature;
-        if (humEl) humEl.textContent = data.hourly.relativehumidity_2m[new Date().getHours()];
-        if (windEl) windEl.textContent = data.current_weather.windspeed;
-        if (rainEl) rainEl.textContent = data.hourly.precipitation_probability[new Date().getHours()] || 0;
+        if (tempEl) tempEl.textContent = temp;
+        if (humEl) humEl.textContent = humidity;
+        if (windEl) windEl.textContent = windspeed;
+        if (rainEl) rainEl.textContent = rain;
 
         // Update top bar
         const topWeatherText = document.querySelector('.weather-info span');
-        if (topWeatherText) topWeatherText.textContent = `${data.current_weather.temperature}°C 실외`;
+        if (topWeatherText) topWeatherText.textContent = `${temp}°C 실외`;
 
-        console.log('✅ 날씨 UI 업데이트 완료');
+        console.log('✅ 날씨 UI 업데이트 완료:', { temp, humidity, windspeed, rain });
 
     } catch (e) {
-        console.error("❌ Open-Meteo Fetch Error:", e);
-        // Fallback values
+        console.error("❌ 날씨 API 오류:", e.name, e.message);
+        
+        // 네트워크 오류 시 서울 평균 날씨 데이터로 대체
+        const mockData = {
+            temp: 15,
+            humidity: 65,
+            windspeed: 2.5,
+            rain: 20
+        };
+
         const tempEl = document.getElementById('out-temp');
         const humEl = document.getElementById('out-hum');
-        if (tempEl) tempEl.textContent = '--';
-        if (humEl) humEl.textContent = '--';
+        const windEl = document.getElementById('out-wind');
+        const rainEl = document.getElementById('out-rain');
+
+        if (tempEl) tempEl.textContent = mockData.temp;
+        if (humEl) humEl.textContent = mockData.humidity;
+        if (windEl) windEl.textContent = mockData.windspeed;
+        if (rainEl) rainEl.textContent = mockData.rain;
+
+        // Update top bar
+        const topWeatherText = document.querySelector('.weather-info span');
+        if (topWeatherText) topWeatherText.textContent = `${mockData.temp}°C 실외 (예상)`;
+
+        console.log('⚠️ Mock 날씨 데이터 사용:', mockData);
     }
 }
 
@@ -1100,6 +1339,187 @@ function initPremium() {
     });
 }
 
+// [TEST] 테스트 함수 - 결과를 강제로 화면에 표시
+window.testAnalysis = function() {
+    alert('🧪 테스트 함수 실행 시작!');
+    console.log('🧪 ━━━ 테스트 함수 실행 ━━━');
+    
+    // 결과 카드 강제 표시
+    const card = document.getElementById('nutrient-solution-card');
+    const list = document.getElementById('nutrient-solution-list');
+    const badge = document.getElementById('nutrient-status-badge');
+    const targetInfo = document.getElementById('nutrient-target-info');
+    
+    console.log('DOM 요소:', { card: !!card, list: !!list, badge: !!badge, targetInfo: !!targetInfo });
+    
+    if (!card) {
+        alert('❌ 결과 카드를 찾을 수 없습니다!\n\nHTML에 nutrient-solution-card가 없습니다.');
+        return;
+    }
+    
+    alert('✅ 결과 카드 찾음!\n\n이제 결과를 표시합니다.');
+    
+    alert('✅ 결과 카드 찾음!\n\n이제 스타일을 설정합니다.');
+    
+    // 강제 표시
+    card.style.cssText = `
+        display: block !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+        border: 3px solid #10b981 !important;
+        background-color: #1e293b !important;
+        padding: 20px !important;
+        margin-top: 20px !important;
+        position: relative !important;
+        z-index: 1000 !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        box-shadow: 0 4px 20px rgba(16, 185, 129, 0.3) !important;
+    `;
+    card.classList.remove('hidden');
+    card.classList.remove('hide');
+    
+    alert('✅ 스타일 설정 완료!\n\n이제 결과 내용을 삽입합니다.');
+    
+    // 테스트 결과 삽입
+    if (list) {
+        list.innerHTML = `
+            <li style="color: #10b981; padding: 20px; background: rgba(16, 185, 129, 0.2); border-radius: 8px; margin-bottom: 15px; font-size: 1.2em; border: 2px solid #10b981;">
+                <strong>✅ 테스트 성공!</strong><br>
+                버튼이 정상적으로 클릭되었고, 결과 카드가 표시되고 있습니다.
+            </li>
+            <li style="color: #3b82f6; padding: 20px; background: rgba(59, 130, 246, 0.2); border-radius: 8px; margin-bottom: 15px; font-size: 1.1em; border: 2px solid #3b82f6;">
+                <strong>🔬 딸기 - 정식기 단계</strong><br>
+                목표 EC: 0.8-1.0 dS/m | pH: 5.5-5.9
+            </li>
+            <li style="color: #f59e0b; padding: 20px; background: rgba(245, 158, 11, 0.2); border-radius: 8px; margin-bottom: 15px; font-size: 1.1em; border: 2px solid #f59e0b;">
+                <strong>⚠️ [예시] 급액 EC 조정 필요</strong><br>
+                현재 EC가 목표 범위를 벗어났습니다. 조정이 필요합니다.
+            </li>
+        `;
+        list.style.cssText = 'display: block !important; visibility: visible !important;';
+        
+        alert('✅ 결과 내용 삽입 완료!\n\n리스트 항목 수: ' + list.children.length);
+    }
+    
+    if (badge) {
+        badge.textContent = '✅ 테스트 완료';
+        badge.style.cssText = 'background-color: #10b981 !important; color: white !important; padding: 8px 16px; border-radius: 20px; display: inline-block !important;';
+    }
+    
+    if (targetInfo) {
+        targetInfo.innerHTML = '<strong style="color: #10b981; font-size: 1.2em;">🎯 테스트 결과가 정상적으로 표시되고 있습니다!</strong>';
+        targetInfo.style.cssText = 'display: block !important; visibility: visible !important;';
+    }
+    
+    alert('✅ 모든 내용 업데이트 완료!\n\n이제 화면을 확인하세요.\n\n녹색 결과 카드가 보여야 합니다!');
+    
+    // 스크롤
+    setTimeout(() => {
+        card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        console.log('✅ 스크롤 완료');
+    }, 100);
+    
+    console.log('✅ 테스트 결과 표시 완료!');
+    
+    // 실제 분석도 실행
+    setTimeout(() => {
+        console.log('🔬 실제 분석 시작...');
+        if (confirm('테스트가 완료되었습니다.\n\n실제 분석을 실행하시겠습니까?')) {
+            window.runAnalysis();
+        }
+    }, 2000);
+};
+
+// [NEW] 강제 실행 함수 (HTML onclick에서 직접 호출)
+window.runAnalysis = function() {
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log('🔘 [runAnalysis] 버튼 클릭 - 강제 실행 모드');
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    
+    try {
+        // [FIX] 현재 활성화된 탭의 모드를 동적으로 확인
+        const activeNav = document.querySelector('.nav-item.active[data-page="dashboard"]');
+        const currentMode = activeNav ? activeNav.getAttribute('data-mode') : 'basic';
+        const isPremiumActive = (currentMode === 'premium');
+
+        console.log('🔬 과학적 알고리즘 분석 시작...', { isPremiumActive, currentMode });
+
+        // 데이터 수집
+        const getCropId = () => {
+            if (isPremiumActive) {
+                const el = document.getElementById('nutrient-crop-select');
+                return el ? el.value : 'strawberry';
+            } else {
+                const el = document.getElementById('select-crop');
+                return el ? el.value : 'strawberry';
+            }
+        };
+
+        const getStandardId = () => {
+            if (isPremiumActive) {
+                const stageEl = document.getElementById('nutrient-stage-select');
+                return stageEl ? stageEl.value : 'planting';
+            } else {
+                const el = document.getElementById('select-standard');
+                return el ? el.value : 'domestic';
+            }
+        };
+
+        const cropId = getCropId();
+        const standardId = getStandardId();
+
+        console.log('✅ 데이터 수집:', { cropId, standardId, isPremiumActive });
+
+        const data = {
+            temp: parseFloat(document.getElementById('input-temp')?.value) || 25,
+            hum: parseFloat(document.getElementById('input-hum')?.value) || 65,
+            light: parseFloat(document.getElementById('input-light')?.value) || 15000,
+            co2: parseFloat(document.getElementById('input-co2')?.value) || 400,
+            leafTemp: parseFloat(document.getElementById('input-leaf-temp')?.value) || 24,
+            cropId: cropId,
+            standardId: standardId,
+            cropName: cropId,
+            nutrient: {
+                active: isPremiumActive,
+                in: {
+                    ec: parseFloat(document.getElementById('input-in-ec')?.value) || 0,
+                    ph: parseFloat(document.getElementById('input-in-ph')?.value) || 0
+                },
+                root: {
+                    ec: parseFloat(document.getElementById('input-root-ec')?.value) || 0,
+                    ph: parseFloat(document.getElementById('input-root-ph')?.value) || 0,
+                    temp: parseFloat(document.getElementById('input-root-temp')?.value) || 0,
+                    hum: parseFloat(document.getElementById('input-root-hum')?.value) || 0
+                },
+                drain: {
+                    ec: parseFloat(document.getElementById('input-drain-ec')?.value) || 0,
+                    ph: parseFloat(document.getElementById('input-drain-ph')?.value) || 0
+                }
+            }
+        };
+
+        console.log('📊 수집된 전체 데이터:', data);
+
+        // 분석 실행
+        if (isPremiumActive) {
+            console.log('💎 프리미엄 양액 정밀 분석 시작');
+            analyzeNutrientSolution(data);
+        } else {
+            console.log('🌿 베이직 환경 분석 시작');
+            analyzeGreenhouseOnly(data);
+        }
+
+        console.log('🎉 분석 완료!');
+
+    } catch (error) {
+        console.error('❌ 분석 오류:', error);
+        alert(`오류: ${error.message}\n\nF12 콘솔을 확인하세요.`);
+    }
+    
+    return false; // 페이지 새로고침 방지
+};
+
 // Manual Data Entry Handling
 function initManualEntry() {
     console.log('🎯 initManualEntry 함수 실행됨');
@@ -1112,9 +1532,12 @@ function initManualEntry() {
 
     form.addEventListener('submit', (e) => {
         e.preventDefault();
-        console.log('🔘 분석 버튼 클릭됨');
-
-        try {
+        console.log('🔘 분석 버튼 클릭됨 (addEventListener)');
+        
+        // runAnalysis 함수 호출
+        window.runAnalysis();
+        
+        return false;
             // [FIX] 현재 활성화된 탭의 모드를 동적으로 확인
             const activeNav = document.querySelector('.nav-item.active[data-page="dashboard"]');
             const currentMode = activeNav ? activeNav.getAttribute('data-mode') : 'basic';
@@ -1135,12 +1558,22 @@ function initManualEntry() {
 
             const getStandardId = () => {
                 if (isPremiumActive) {
-                    const el = document.getElementById('nutrient-standard-select');
-                    return el ? el.value : 'yamazaki';
+                    // [FIX] 프리미엄에서는 생육 단계를 standardId로 사용
+                    const stageEl = document.getElementById('nutrient-stage-select');
+                    return stageEl ? stageEl.value : 'planting';
                 } else {
                     const el = document.getElementById('select-standard');
                     return el ? el.value : 'domestic';
                 }
+            };
+
+            const getNutrientStandard = () => {
+                // 양액 표준 (야마자키, 네덜란드 등) - 참고용
+                if (isPremiumActive) {
+                    const el = document.getElementById('nutrient-standard-select');
+                    return el ? el.value : 'yamazaki';
+                }
+                return null;
             };
 
             const getCropName = () => {
@@ -1154,10 +1587,17 @@ function initManualEntry() {
             };
 
             const cropId = getCropId();
-            const standardId = getStandardId();
+            const standardId = getStandardId(); // 이제 생육 단계 (planting, vegetative 등)
+            const nutrientStandard = getNutrientStandard(); // 양액 표준 (yamazaki 등)
             const cropName = getCropName();
 
-            console.log('✅ 데이터 수집:', { isPremiumActive, cropId, standardId, cropName });
+            console.log('✅ 데이터 수집:', { 
+                isPremiumActive, 
+                cropId, 
+                standardId, // 생육 단계
+                nutrientStandard, // 양액 표준 (참고용)
+                cropName 
+            });
 
             const data = {
                 temp: parseFloat(document.getElementById('input-temp')?.value) || 26.5,
@@ -1231,44 +1671,59 @@ function initManualEntry() {
 // [REFACTORED] 무토양 수경재배 EC/pH 진단·처방 알고리즘 (Rule Engine)
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 function analyzeNutrientSolution(data) {
-    const { cropId, standardId, nutrient } = data;
+    try {
+        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        console.log('🔬 [analyzeNutrientSolution] 함수 시작');
+        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        
+        const { cropId, standardId, nutrient } = data;
 
-    console.log(`🔬 무토양 수경재배 진단 시작: Crop=${cropId}, Standard=${standardId}`);
+        console.log(`📊 입력 데이터:`, {
+            cropId,
+            standardId,
+            nutrient: {
+                in_ec: nutrient.in.ec,
+                root_ec: nutrient.root.ec,
+                drain_ec: nutrient.drain.ec
+            }
+        });
 
-    // ──────────────────────────────────────────────────────────────
-    // 1. Setpoint 로드 (작물별/생육단계별)
-    // ──────────────────────────────────────────────────────────────
-    const cropData = SUBSTRATE_SOILLESS_DB[cropId];
+        // ──────────────────────────────────────────────────────────────
+        // 1. Setpoint 로드 (작물별/생육단계별)
+        // ──────────────────────────────────────────────────────────────
+        console.log(`🔍 SUBSTRATE_SOILLESS_DB 확인 중...`);
+        console.log(`📋 사용 가능한 작물:`, Object.keys(SUBSTRATE_SOILLESS_DB));
+        
+        const cropData = SUBSTRATE_SOILLESS_DB[cropId];
 
-    if (!cropData) {
-        console.warn(`⚠️ "${cropId}" 작물이 DB에 없습니다. Legacy 모드로 전환합니다.`);
-        // Fallback: 기존 단순 분석으로 전환
-        return analyzeNutrientSolutionLegacy(data);
-    }
+        if (!cropData) {
+            console.warn(`⚠️ "${cropId}" 작물이 DB에 없습니다. Legacy 모드로 전환합니다.`);
+            // Fallback: 기존 단순 분석으로 전환
+            return analyzeNutrientSolutionLegacy(data);
+        }
+
+        console.log(`✅ 작물 데이터 찾음: ${cropId}`);
 
     // standardId를 생육단계로 매핑
+    // [FIX] standardId가 이미 생육 단계(planting, vegetative 등)이므로 DB 키로 직접 매핑
     const stageMap = {
-        'planting': 'transplant',
-        'yamazaki': 'harvest',
-        'netherlands': 'harvest',
-        'japan_enshi': 'harvest',
-        'korea_rda': 'harvest',
-        'cooper': 'harvest',
-        'belgium': 'harvest',
-        'utrecht': 'harvest',
-        'korea_common': 'harvest',
-        'korea_os': 'harvest',
-        'japan_hort': 'harvest',
+        'planting': 'transplant', // 정식기
+        'vegetative': 'early_growth', // 영양생장기
+        'flowering': 'flowering', // 개화기
+        'fruiting': 'fruit_enlargement', // 비대기
+        'harvest': 'harvest', // 수확기
+        'late': 'late_harvest', // 수확후기
+        // 폴백 (기존 표준 이름이 들어올 경우)
         'transplant': 'transplant',
         'early_growth': 'early_growth',
-        'flowering': 'flowering',
         'fruit_enlargement': 'fruit_enlargement',
-        'harvest': 'harvest',
         'late_harvest': 'late_harvest'
     };
 
-    const stage = stageMap[standardId] || 'harvest';
+    const stage = stageMap[standardId] || 'transplant';
     const setpoint = cropData[stage];
+
+    console.log(`📊 생육 단계 매핑: ${standardId} → ${stage}`);
 
     if (!setpoint) {
         console.warn(`⚠️ "${cropId}" 작물의 "${stage}" 단계 데이터가 없습니다.`);
@@ -1428,6 +1883,16 @@ function analyzeNutrientSolution(data) {
     console.log(`📊 진단 완료: ${diagnosis.length}개 이슈, ${actions.length}개 조치, confidence=${confidence.toFixed(2)}`);
 
     // UI 업데이트
+    console.log('🎨 updateNutrientSolutionUI 호출 중...');
+    console.log('📊 전달 데이터:', {
+        actions_count: actions.length,
+        overallStatus,
+        targetEC: setpoint.feed_ec[0],
+        targetPH: setpoint.feed_ph[0],
+        cropId,
+        standardName: `${cropId.toUpperCase()} - ${stage} 단계`
+    });
+    
     updateNutrientSolutionUI(
         actions.sort((a, b) => a.priority - b.priority),
         overallStatus,
@@ -1438,12 +1903,22 @@ function analyzeNutrientSolution(data) {
         { vpd: 0, dewPoint: 0 } // 환경 지표는 기존 함수에서 처리
     );
 
-    console.log('✅ 무토양 수경재배 진단 완료');
+    console.log('✅ ━━━ 무토양 수경재배 진단 완료 ━━━');
+    console.log('');
 
-} catch (error) {
-    console.error('❌ analyzeNutrientSolution 오류:', error);
-    alert(`분석 중 오류가 발생했습니다: ${error.message}\n콘솔(F12)을 확인하세요.`);
-}
+    } catch (error) {
+        console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        console.error('❌ [analyzeNutrientSolution] 오류 발생!');
+        console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        console.error('에러 타입:', error.name);
+        console.error('에러 메시지:', error.message);
+        console.error('스택:', error.stack);
+        console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        
+        alert(`❌ 분석 중 오류가 발생했습니다!\n\n` +
+              `에러: ${error.message}\n\n` +
+              `F12 콘솔을 확인하세요.`);
+    }
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -1653,7 +2128,17 @@ function analyzeGreenhouseOnly(data) {
 
 // Update Nutrient Solution UI
 function updateNutrientSolutionUI(solutions, status, targetEC, targetPH, cropId, standardName, metrics = null) {
-    console.log('🎨 updateNutrientSolutionUI 호출됨:', { solutions: solutions.length, status, targetEC, targetPH, cropId, standardName });
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log('🎨 [updateNutrientSolutionUI] 함수 시작');
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log('📊 입력 데이터:', { 
+        solutions_count: solutions.length, 
+        status, 
+        targetEC, 
+        targetPH, 
+        cropId, 
+        standardName 
+    });
 
     const solutionCard = document.getElementById('nutrient-solution-card');
     const statusBadge = document.getElementById('nutrient-status-badge');
@@ -1661,17 +2146,37 @@ function updateNutrientSolutionUI(solutions, status, targetEC, targetPH, cropId,
     const solutionList = document.getElementById('nutrient-solution-list');
     const cardHeader = solutionCard?.querySelector('h4');
 
+    console.log('🔍 DOM 요소 확인:', {
+        solutionCard: !!solutionCard,
+        statusBadge: !!statusBadge,
+        targetInfo: !!targetInfo,
+        solutionList: !!solutionList,
+        cardHeader: !!cardHeader
+    });
+
     if (!solutionCard) {
         console.error('❌ nutrient-solution-card를 찾을 수 없습니다!');
+        alert('❌ 결과 카드를 찾을 수 없습니다!\n페이지를 새로고침 해주세요.');
         return;
     }
 
     console.log('✅ 모든 UI 엘리먼트 확인 완료');
 
-    // Show the card and move it below the form if needed
+    // [FORCE] 카드 강제 표시 (모든 숨김 해제)
     solutionCard.classList.remove('hidden');
-    solutionCard.style.display = 'block'; // Force display
-    console.log('✅ nutrient-solution-card 표시됨');
+    solutionCard.classList.remove('hide');
+    solutionCard.style.display = 'block';
+    solutionCard.style.visibility = 'visible';
+    solutionCard.style.opacity = '1';
+    solutionCard.style.position = 'relative';
+    solutionCard.style.zIndex = '10';
+    
+    console.log('✅ nutrient-solution-card 강제 표시 완료');
+    console.log('📊 카드 현재 스타일:', {
+        display: solutionCard.style.display,
+        visibility: solutionCard.style.visibility,
+        opacity: solutionCard.style.opacity
+    });
 
     // Determine Mode (Premium vs Free)
     const isGreenhouseOnly = standardName === 'Greenhouse Analysis';
@@ -1700,31 +2205,63 @@ function updateNutrientSolutionUI(solutions, status, targetEC, targetPH, cropId,
     }
 
     // Update solution list
+    console.log('📝 솔루션 리스트 업데이트 시작...');
     solutionList.innerHTML = '';
+    solutionList.style.display = 'block';
+    solutionList.style.visibility = 'visible';
 
     if (solutions.length === 0) {
         const li = document.createElement('li');
         li.className = 'no-solution';
+        li.style.display = 'block';
         li.textContent = isGreenhouseOnly ? '환경 조건이 전반적으로 양호합니다.' : '모든 데이터가 학술적 허용 오차 범위 내에 있습니다.';
         solutionList.appendChild(li);
+        console.log('📝 기본 메시지 추가됨');
     } else {
-        solutions.forEach(solution => {
+        console.log(`📝 ${solutions.length}개의 솔루션 추가 중...`);
+        solutions.forEach((solution, index) => {
             const li = document.createElement('li');
             li.className = `solution-${solution.type}`;
+            li.style.display = 'block';
+            li.style.marginBottom = '10px';
             li.innerHTML = `<i data-lucide="${solution.icon}"></i> <span>${solution.text}</span>`;
             solutionList.appendChild(li);
+            console.log(`  ${index + 1}. ${solution.type}: ${solution.text.substring(0, 50)}...`);
         });
     }
 
+    console.log('✅ 솔루션 리스트 HTML 업데이트 완료');
+    console.log('📊 리스트 내용:', solutionList.innerHTML.substring(0, 200));
+
     // Reinitialize Lucide icons
-    lucide.createIcons();
+    if (typeof lucide !== 'undefined') {
+        lucide.createIcons();
+        console.log('✅ Lucide 아이콘 재생성 완료');
+    }
 
-    // Scroll to results
+    // 강제 스크롤
+    console.log('📜 결과 카드로 스크롤 시작...');
     setTimeout(() => {
-        solutionCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-    }, 100);
+        solutionCard.scrollIntoView({ 
+            behavior: 'smooth', 
+            block: 'center',
+            inline: 'nearest'
+        });
+        console.log('✅ 스크롤 완료');
+    }, 300);
 
-    console.log('✅ 양액 분석 결과 UI 렌더링 완료');
+    // 최종 확인
+    setTimeout(() => {
+        console.log('🎯 최종 상태 확인:');
+        console.log('  - 카드 표시:', solutionCard.style.display);
+        console.log('  - 리스트 자식 수:', solutionList.children.length);
+        console.log('  - 카드 위치:', solutionCard.getBoundingClientRect());
+    }, 500);
+
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log('✅ [updateNutrientSolutionUI] 완료!');
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log('');
 }
 
 
