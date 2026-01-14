@@ -1424,6 +1424,11 @@ function analyzeNutrientSolution(data) {
     );
 
     console.log('✅ 무토양 수경재배 진단 완료');
+
+} catch (error) {
+    console.error('❌ analyzeNutrientSolution 오류:', error);
+    alert(`분석 중 오류가 발생했습니다: ${error.message}\n콘솔(F12)을 확인하세요.`);
+}
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
