@@ -598,6 +598,304 @@ const nutrientPrescriptions = {
         'yamazaki': { name: '야마자키 (Leafy)', ec: 1.3, ph: 6.0, info: '일반 엽채류 범용 처방입니다.' },
         'korea_common': { name: '국내 표준', ec: 1.5, ph: 5.8, info: '국내 엽채류 재배 환경에 맞춘 처방입니다.' }
     },
+};
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// [NEW] 무토양(코코/혼합상토) 수경재배 급액·근권·배액 진단·처방 DB (v1.0)
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// 목적: 작물/생육단계별 표준 처방(feed/root/drain EC·pH, 배액률)을 정의하고
+//      측정값 기반 진단(염류축적/과세척/pH drift 등) + 우선순위화된 조치 산출
+// 
+// 구조: { crop: { stage: { feed_ec, feed_ph, root_ec, root_ph, drain_ec, drain_ph, drain_ratio_pct } } }
+// 단위: EC(dS/m), pH(0~14), drain_ratio_pct(%)
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+const SUBSTRATE_SOILLESS_DB = {
+    // 딸기 (salt sensitive, max_feed_ec_step=0.15)
+    strawberry: {
+        change_limits: { max_feed_ec_step: 0.15, max_feed_ph_step: 0.2, max_drain_ratio_step: 10 },
+        transplant: {
+            feed_ec: [0.8, 1.0], feed_ph: [5.5, 5.9],
+            root_ec: [0.7, 1.0], root_ph: [5.6, 6.3],
+            drain_ec: [0.7, 1.1], drain_ph: [5.9, 6.5],
+            drain_ratio_pct: [20, 35]
+        },
+        early_growth: {
+            feed_ec: [0.9, 1.1], feed_ph: [5.5, 6.0],
+            root_ec: [0.9, 1.1], root_ph: [5.6, 6.5],
+            drain_ec: [0.9, 1.2], drain_ph: [6.0, 6.6],
+            drain_ratio_pct: [25, 40]
+        },
+        flowering: {
+            feed_ec: [1.0, 1.1], feed_ph: [5.5, 6.0],
+            root_ec: [1.0, 1.2], root_ph: [5.6, 6.5],
+            drain_ec: [1.0, 1.3], drain_ph: [6.0, 6.6],
+            drain_ratio_pct: [25, 40]
+        },
+        fruit_enlargement: {
+            feed_ec: [1.0, 1.2], feed_ph: [5.5, 6.0],
+            root_ec: [1.1, 1.3], root_ph: [5.6, 6.6],
+            drain_ec: [1.1, 1.4], drain_ph: [6.0, 6.7],
+            drain_ratio_pct: [25, 40]
+        },
+        harvest: {
+            feed_ec: [1.1, 1.2], feed_ph: [5.6, 6.1],
+            root_ec: [1.1, 1.3], root_ph: [5.6, 6.6],
+            drain_ec: [1.2, 1.5], drain_ph: [6.0, 6.7],
+            drain_ratio_pct: [25, 40]
+        },
+        late_harvest: {
+            feed_ec: [1.0, 1.1], feed_ph: [5.7, 6.2],
+            root_ec: [1.0, 1.2], root_ph: [5.6, 6.7],
+            drain_ec: [1.1, 1.4], drain_ph: [6.1, 6.8],
+            drain_ratio_pct: [25, 40]
+        }
+    },
+
+    // 토마토
+    tomato: {
+        change_limits: { max_feed_ec_step: 0.2, max_feed_ph_step: 0.2, max_drain_ratio_step: 10 },
+        transplant: {
+            feed_ec: [1.2, 1.6], feed_ph: [5.5, 6.0],
+            root_ec: [1.2, 1.8], root_ph: [5.8, 6.5],
+            drain_ec: [1.2, 2.0], drain_ph: [6.0, 6.7],
+            drain_ratio_pct: [15, 30]
+        },
+        early_growth: {
+            feed_ec: [1.6, 2.0], feed_ph: [5.5, 6.0],
+            root_ec: [1.8, 2.2], root_ph: [6.0, 6.6],
+            drain_ec: [2.0, 2.6], drain_ph: [6.1, 6.8],
+            drain_ratio_pct: [20, 35]
+        },
+        flowering: {
+            feed_ec: [2.0, 2.3], feed_ph: [5.5, 6.0],
+            root_ec: [2.0, 2.4], root_ph: [6.0, 6.6],
+            drain_ec: [2.2, 2.8], drain_ph: [6.1, 6.8],
+            drain_ratio_pct: [20, 35]
+        },
+        fruit_enlargement: {
+            feed_ec: [2.3, 2.5], feed_ph: [5.5, 6.0],
+            root_ec: [2.3, 2.6], root_ph: [6.0, 6.6],
+            drain_ec: [2.4, 3.0], drain_ph: [6.1, 6.8],
+            drain_ratio_pct: [20, 35]
+        },
+        harvest: {
+            feed_ec: [2.4, 2.7], feed_ph: [5.6, 6.2],
+            root_ec: [2.4, 2.8], root_ph: [6.0, 6.7],
+            drain_ec: [2.6, 3.2], drain_ph: [6.2, 6.9],
+            drain_ratio_pct: [20, 35]
+        },
+        late_harvest: {
+            feed_ec: [2.0, 2.3], feed_ph: [5.8, 6.5],
+            root_ec: [2.0, 2.5], root_ph: [6.0, 6.8],
+            drain_ec: [2.2, 3.0], drain_ph: [6.2, 7.0],
+            drain_ratio_pct: [20, 35]
+        }
+    },
+
+    // 멜론
+    melon: {
+        change_limits: { max_feed_ec_step: 0.2, max_feed_ph_step: 0.2, max_drain_ratio_step: 10 },
+        transplant: {
+            feed_ec: [1.4, 1.6], feed_ph: [5.5, 6.0],
+            root_ec: [1.4, 1.8], root_ph: [5.8, 6.5],
+            drain_ec: [1.5, 2.0], drain_ph: [6.0, 6.8],
+            drain_ratio_pct: [20, 35]
+        },
+        early_growth: {
+            feed_ec: [1.5, 1.7], feed_ph: [5.5, 6.0],
+            root_ec: [1.6, 2.0], root_ph: [5.8, 6.5],
+            drain_ec: [1.8, 2.3], drain_ph: [6.0, 6.8],
+            drain_ratio_pct: [20, 35]
+        },
+        flowering: {
+            feed_ec: [1.5, 1.8], feed_ph: [5.5, 6.0],
+            root_ec: [1.8, 2.2], root_ph: [5.8, 6.6],
+            drain_ec: [2.0, 2.6], drain_ph: [6.0, 6.8],
+            drain_ratio_pct: [20, 35]
+        },
+        fruit_enlargement: {
+            feed_ec: [1.8, 2.1], feed_ph: [5.5, 6.1],
+            root_ec: [2.0, 2.5], root_ph: [5.8, 6.6],
+            drain_ec: [2.2, 3.0], drain_ph: [6.0, 6.9],
+            drain_ratio_pct: [20, 35]
+        },
+        harvest: {
+            feed_ec: [2.0, 2.3], feed_ph: [5.6, 6.2],
+            root_ec: [2.2, 2.8], root_ph: [5.8, 6.7],
+            drain_ec: [2.5, 3.3], drain_ph: [6.1, 7.0],
+            drain_ratio_pct: [15, 30]
+        }
+    },
+
+    // 오이
+    cucumber: {
+        change_limits: { max_feed_ec_step: 0.2, max_feed_ph_step: 0.2, max_drain_ratio_step: 10 },
+        transplant: {
+            feed_ec: [1.3, 1.6], feed_ph: [5.6, 6.0],
+            root_ec: [1.3, 1.8], root_ph: [5.8, 6.5],
+            drain_ec: [1.5, 2.2], drain_ph: [6.0, 6.8],
+            drain_ratio_pct: [15, 30]
+        },
+        early_growth: {
+            feed_ec: [1.5, 1.8], feed_ph: [5.6, 6.0],
+            root_ec: [1.7, 2.1], root_ph: [5.8, 6.5],
+            drain_ec: [1.9, 2.6], drain_ph: [6.0, 6.8],
+            drain_ratio_pct: [20, 35]
+        },
+        flowering: {
+            feed_ec: [1.7, 2.0], feed_ph: [5.6, 6.1],
+            root_ec: [1.9, 2.3], root_ph: [5.8, 6.6],
+            drain_ec: [2.1, 2.8], drain_ph: [6.0, 6.9],
+            drain_ratio_pct: [20, 35]
+        },
+        fruit_enlargement: {
+            feed_ec: [1.8, 2.1], feed_ph: [5.7, 6.2],
+            root_ec: [2.0, 2.4], root_ph: [5.8, 6.6],
+            drain_ec: [2.2, 3.0], drain_ph: [6.1, 6.9],
+            drain_ratio_pct: [20, 35]
+        },
+        harvest: {
+            feed_ec: [1.8, 2.2], feed_ph: [5.8, 6.3],
+            root_ec: [2.0, 2.6], root_ph: [5.9, 6.7],
+            drain_ec: [2.3, 3.2], drain_ph: [6.2, 7.0],
+            drain_ratio_pct: [20, 35]
+        },
+        late_harvest: {
+            feed_ec: [1.6, 2.0], feed_ph: [5.9, 6.4],
+            root_ec: [1.8, 2.4], root_ph: [6.0, 6.8],
+            drain_ec: [2.0, 3.0], drain_ph: [6.2, 7.0],
+            drain_ratio_pct: [20, 35]
+        }
+    },
+
+    // 가지 (현장 튜닝 권장)
+    eggplant: {
+        change_limits: { max_feed_ec_step: 0.2, max_feed_ph_step: 0.2, max_drain_ratio_step: 10 },
+        transplant: {
+            feed_ec: [1.4, 1.7], feed_ph: [5.5, 6.0],
+            root_ec: [1.6, 2.0], root_ph: [5.8, 6.5],
+            drain_ec: [1.8, 2.6], drain_ph: [6.0, 6.8],
+            drain_ratio_pct: [15, 30]
+        },
+        early_growth: {
+            feed_ec: [1.7, 2.1], feed_ph: [5.5, 6.1],
+            root_ec: [2.0, 2.6], root_ph: [5.8, 6.6],
+            drain_ec: [2.3, 3.2], drain_ph: [6.0, 6.9],
+            drain_ratio_pct: [20, 35]
+        },
+        flowering: {
+            feed_ec: [2.0, 2.4], feed_ph: [5.6, 6.2],
+            root_ec: [2.3, 2.9], root_ph: [5.8, 6.7],
+            drain_ec: [2.6, 3.6], drain_ph: [6.1, 7.0],
+            drain_ratio_pct: [20, 35]
+        },
+        fruit_enlargement: {
+            feed_ec: [2.2, 2.6], feed_ph: [5.7, 6.3],
+            root_ec: [2.5, 3.2], root_ph: [5.9, 6.8],
+            drain_ec: [2.8, 4.0], drain_ph: [6.1, 7.1],
+            drain_ratio_pct: [20, 35]
+        },
+        harvest: {
+            feed_ec: [2.2, 2.8], feed_ph: [5.8, 6.4],
+            root_ec: [2.5, 3.4], root_ph: [6.0, 6.9],
+            drain_ec: [3.0, 4.2], drain_ph: [6.2, 7.2],
+            drain_ratio_pct: [20, 35]
+        },
+        late_harvest: {
+            feed_ec: [2.0, 2.4], feed_ph: [5.9, 6.5],
+            root_ec: [2.2, 3.0], root_ph: [6.0, 7.0],
+            drain_ec: [2.6, 3.8], drain_ph: [6.2, 7.3],
+            drain_ratio_pct: [20, 35]
+        }
+    },
+
+    // 파프리카/벨페퍼
+    paprika: {
+        change_limits: { max_feed_ec_step: 0.2, max_feed_ph_step: 0.2, max_drain_ratio_step: 10 },
+        transplant: {
+            feed_ec: [2.6, 3.1], feed_ph: [5.7, 6.1],
+            root_ec: [2.8, 3.3], root_ph: [5.8, 6.5],
+            drain_ec: [3.0, 3.8], drain_ph: [6.0, 6.8],
+            drain_ratio_pct: [20, 35]
+        },
+        early_growth: {
+            feed_ec: [2.8, 3.3], feed_ph: [5.7, 6.1],
+            root_ec: [3.0, 3.5], root_ph: [5.8, 6.5],
+            drain_ec: [3.2, 4.0], drain_ph: [6.0, 6.8],
+            drain_ratio_pct: [20, 35]
+        },
+        flowering: {
+            feed_ec: [2.6, 3.0], feed_ph: [5.8, 6.2],
+            root_ec: [2.7, 3.2], root_ph: [5.8, 6.6],
+            drain_ec: [3.0, 3.8], drain_ph: [6.0, 6.9],
+            drain_ratio_pct: [20, 35]
+        },
+        fruit_enlargement: {
+            feed_ec: [2.2, 2.6], feed_ph: [5.8, 6.3],
+            root_ec: [2.4, 2.9], root_ph: [5.9, 6.7],
+            drain_ec: [2.7, 3.5], drain_ph: [6.1, 7.0],
+            drain_ratio_pct: [20, 35]
+        },
+        harvest: {
+            feed_ec: [2.0, 2.4], feed_ph: [5.8, 6.4],
+            root_ec: [2.2, 2.8], root_ph: [5.9, 6.8],
+            drain_ec: [2.6, 3.4], drain_ph: [6.1, 7.1],
+            drain_ratio_pct: [20, 35]
+        },
+        late_harvest: {
+            feed_ec: [2.0, 2.3], feed_ph: [5.9, 6.5],
+            root_ec: [2.1, 2.6], root_ph: [6.0, 6.9],
+            drain_ec: [2.4, 3.2], drain_ph: [6.2, 7.2],
+            drain_ratio_pct: [20, 35]
+        }
+    },
+
+    // 상추 (low EC, tipburn sensitive, max_feed_ec_step=0.15)
+    lettuce: {
+        change_limits: { max_feed_ec_step: 0.15, max_feed_ph_step: 0.2, max_drain_ratio_step: 10 },
+        transplant: {
+            feed_ec: [0.8, 1.1], feed_ph: [5.6, 6.1],
+            root_ec: [0.8, 1.2], root_ph: [5.8, 6.5],
+            drain_ec: [0.9, 1.4], drain_ph: [6.0, 6.8],
+            drain_ratio_pct: [10, 25]
+        },
+        early_growth: {
+            feed_ec: [1.0, 1.3], feed_ph: [5.6, 6.2],
+            root_ec: [1.0, 1.4], root_ph: [5.8, 6.6],
+            drain_ec: [1.1, 1.6], drain_ph: [6.0, 6.9],
+            drain_ratio_pct: [10, 25]
+        },
+        harvest: {
+            feed_ec: [1.0, 1.4], feed_ph: [5.7, 6.3],
+            root_ec: [1.1, 1.6], root_ph: [5.9, 6.7],
+            drain_ec: [1.2, 1.8], drain_ph: [6.1, 7.0],
+            drain_ratio_pct: [10, 25]
+        }
+    },
+
+    // 엽채류 일반 (max_feed_ec_step=0.15)
+    leafy_greens: {
+        change_limits: { max_feed_ec_step: 0.15, max_feed_ph_step: 0.2, max_drain_ratio_step: 10 },
+        transplant: {
+            feed_ec: [0.9, 1.2], feed_ph: [5.6, 6.1],
+            root_ec: [1.0, 1.4], root_ph: [5.8, 6.6],
+            drain_ec: [1.1, 1.6], drain_ph: [6.0, 6.9],
+            drain_ratio_pct: [10, 25]
+        },
+        early_growth: {
+            feed_ec: [1.1, 1.5], feed_ph: [5.6, 6.2],
+            root_ec: [1.2, 1.8], root_ph: [5.8, 6.7],
+            drain_ec: [1.3, 2.0], drain_ph: [6.0, 7.0],
+            drain_ratio_pct: [10, 25]
+        },
+        harvest: {
+            feed_ec: [1.1, 1.6], feed_ph: [5.7, 6.3],
+            root_ec: [1.3, 2.0], root_ph: [5.9, 6.8],
+            drain_ec: [1.4, 2.2], drain_ph: [6.1, 7.1],
+            drain_ratio_pct: [10, 25]
+        }
+    }
     // Fallback for other crops
     default: {
         'yamazaki': { name: '야마자키 (Standard)', ec: 1.5, ph: 6.0, info: '범용 야마자키 처방입니다.' },
@@ -880,7 +1178,7 @@ function initManualEntry() {
 
             // [CORE] 과학적 알고리즘 실행
             console.log('🧪 과학적 알고리즘 분석 실행 중...');
-            
+
             if (isPremiumActive) {
                 // 프리미엄: 양액 정밀 분석 (작물별 + 처방전별 + 입력데이터 기반)
                 console.log('💎 프리미엄 양액 정밀 분석 시작');
@@ -914,190 +1212,267 @@ function initManualEntry() {
 }
 
 // Nutrient Solution Analysis
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// [REFACTORED] 무토양 수경재배 EC/pH 진단·처방 알고리즘 (Rule Engine)
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 function analyzeNutrientSolution(data) {
     const { cropId, standardId, nutrient } = data;
 
-    // [Fix] Trust the data passed from submit handler (which handles Premium/Standard logic)
-    const nutrientCrop = cropId;
-    const nutrientStandard = standardId;
+    console.log(`🔬 무토양 수경재배 진단 시작: Crop=${cropId}, Standard=${standardId}`);
 
-    console.log(`🔬 분석 시작: Crop=${nutrientCrop}, Standard=${nutrientStandard}`);
+    // ──────────────────────────────────────────────────────────────
+    // 1. Setpoint 로드 (작물별/생육단계별)
+    // ──────────────────────────────────────────────────────────────
+    const cropData = SUBSTRATE_SOILLESS_DB[cropId];
 
-    // [CRITICAL FIX] 안전한 데이터 조회
-    let targetData = null;
-
-    // 1순위: 작물별 + 표준별 데이터
-    if (nutrientPrescriptions[nutrientCrop] && nutrientPrescriptions[nutrientCrop][nutrientStandard]) {
-        targetData = nutrientPrescriptions[nutrientCrop][nutrientStandard];
-        console.log(`✅ 작물별 처방 찾음: ${targetData.name}`);
-    }
-    // 2순위: 기본 표준 데이터
-    else if (nutrientPrescriptions.default && nutrientPrescriptions.default[nutrientStandard]) {
-        targetData = nutrientPrescriptions.default[nutrientStandard];
-        console.log(`✅ 기본 표준 처방 사용: ${targetData.name}`);
-    }
-    // 3순위: 야마자키 기본
-    else if (nutrientPrescriptions.default && nutrientPrescriptions.default['yamazaki']) {
-        targetData = nutrientPrescriptions.default['yamazaki'];
-        console.log(`⚠️ 폴백: 야마자키 기본 처방 사용`);
-    }
-    // 최종 폴백
-    else {
-        targetData = {
-            name: '표준 양액',
-            ec: 2.0,
-            ph: 6.0,
-            info: '일반 수경재배 표준입니다.'
-        };
-        console.warn(`❌ 처방 데이터 없음. 기본값 사용`);
+    if (!cropData) {
+        console.warn(`⚠️ "${cropId}" 작물이 DB에 없습니다. Legacy 모드로 전환합니다.`);
+        // Fallback: 기존 단순 분석으로 전환
+        return analyzeNutrientSolutionLegacy(data);
     }
 
-    // [SAFETY CHECK] targetData 검증
-    if (!targetData || typeof targetData.ec === 'undefined') {
-        console.error('❌ targetData 오류:', targetData);
-        targetData = { name: '표준', ec: 2.0, ph: 6.0, info: '기본 처방' };
+    // standardId를 생육단계로 매핑
+    const stageMap = {
+        'planting': 'transplant',
+        'yamazaki': 'harvest',
+        'netherlands': 'harvest',
+        'japan_enshi': 'harvest',
+        'korea_rda': 'harvest',
+        'cooper': 'harvest',
+        'belgium': 'harvest',
+        'utrecht': 'harvest',
+        'korea_common': 'harvest',
+        'korea_os': 'harvest',
+        'japan_hort': 'harvest',
+        'transplant': 'transplant',
+        'early_growth': 'early_growth',
+        'flowering': 'flowering',
+        'fruit_enlargement': 'fruit_enlargement',
+        'harvest': 'harvest',
+        'late_harvest': 'late_harvest'
+    };
+
+    const stage = stageMap[standardId] || 'harvest';
+    const setpoint = cropData[stage];
+
+    if (!setpoint) {
+        console.warn(`⚠️ "${cropId}" 작물의 "${stage}" 단계 데이터가 없습니다.`);
+        return analyzeNutrientSolutionLegacy(data);
     }
 
-    const targetEC = targetData.ec;
-    const targetPH = targetData.ph;
-    const standardName = targetData.name;
-    const standardInfo = targetData.info;
+    const changeLimits = cropData.change_limits || { max_feed_ec_step: 0.2, max_feed_ph_step: 0.2, max_drain_ratio_step: 10 };
 
-    const solutions = [];
+    console.log(`✅ Setpoint 로드: ${cropId} / ${stage}`, setpoint);
 
-    // Add Crop Guide Tip (Safe Mode)
-    let guide = null;
-    try {
-        if (typeof cropGuide !== 'undefined') {
-            guide = cropGuide[nutrientCrop] || cropGuide.lettuce;
-        }
-    } catch (e) { console.log('Crop guide skipped'); }
+    // ──────────────────────────────────────────────────────────────
+    // 2. 측정값 추출 및 Delta 계산
+    // ──────────────────────────────────────────────────────────────
+    const feed_ec = nutrient.in.ec || 0;
+    const feed_ph = nutrient.in.ph || 0;
+    const root_ec = nutrient.root.ec || 0;
+    const root_ph = nutrient.root.ph || 0;
+    const drain_ec = nutrient.drain.ec || 0;
+    const drain_ph = nutrient.drain.ph || 0;
+    const root_temp = nutrient.root.temp || 0;
 
-    if (guide) {
-        solutions.push({
+    // Deltas
+    const d_root_ec = root_ec - feed_ec;
+    const d_drain_ec = drain_ec - feed_ec;
+    const d_root_ph = root_ph - feed_ph;
+    const d_drain_ph = drain_ph - feed_ph;
+
+    // Warning thresholds (작물 민감도 반영)
+    const sensitive_crops = ['strawberry', 'lettuce', 'leafy_greens'];
+    const warn_delta_ec = sensitive_crops.includes(cropId) ? 0.2 : 0.3;
+    const warn_delta_ph = 0.3;
+
+    console.log(`📊 측정값: feed_ec=${feed_ec}, root_ec=${root_ec}, drain_ec=${drain_ec}`);
+    console.log(`📊 Deltas: d_root_ec=${d_root_ec.toFixed(2)}, d_drain_ec=${d_drain_ec.toFixed(2)}`);
+
+    // ──────────────────────────────────────────────────────────────
+    // 3. 진단 평가 (4가지 상태)
+    // ──────────────────────────────────────────────────────────────
+    const diagnosis = [];
+    const actions = [];
+    let overallStatus = 'healthy';
+
+    // [A] SALT_ACCUMULATION (염류 축적)
+    if (drain_ec > setpoint.drain_ec[1] || root_ec > setpoint.root_ec[1] || d_drain_ec >= warn_delta_ec) {
+        diagnosis.push({ code: 'SALT_ACCUMULATION', severity: 'high' });
+
+        actions.push({
+            priority: 1,
+            type: 'warning',
+            icon: 'droplet',
+            text: `<strong>[①우선]</strong> 배액률을 +10%p 상향하세요 (목표 ${setpoint.drain_ratio_pct[0]}~${setpoint.drain_ratio_pct[1]}%)`
+        });
+
+        const ec_delta = Math.min(changeLimits.max_feed_ec_step, 0.15);
+        actions.push({
+            priority: 2,
+            type: 'warning',
+            icon: 'flask-conical',
+            text: `<strong>[②2차]</strong> 급액 EC를 -${ec_delta.toFixed(1)}dS/m 낮추세요`
+        });
+
+        overallStatus = 'warning';
+    }
+
+    // [B] OVERLEACH (과세척)
+    if (drain_ec < setpoint.drain_ec[0] || d_drain_ec <= -warn_delta_ec) {
+        diagnosis.push({ code: 'OVERLEACH_OR_UNDERFEED', severity: 'med' });
+
+        actions.push({
+            priority: 1,
             type: 'info',
-            icon: 'book',
-            text: `<strong>[${guide.name} 재배 가이드]</strong> ${guide.tip}`
+            icon: 'droplet-off',
+            text: '<strong>[①우선]</strong> 배액률을 -5~10%p 하향하세요'
+        });
+
+        const ec_delta = Math.min(changeLimits.max_feed_ec_step, 0.15);
+        actions.push({
+            priority: 2,
+            type: 'info',
+            icon: 'flask-conical',
+            text: `<strong>[②2차]</strong> 급액 EC를 +${ec_delta.toFixed(1)}dS/m 높이세요`
+        });
+
+        if (overallStatus === 'healthy') overallStatus = 'info';
+    }
+
+    // [C] PH_DRIFT_UP (pH 상승)
+    if (drain_ph > setpoint.drain_ph[1] || d_drain_ph >= warn_delta_ph) {
+        diagnosis.push({ code: 'PH_DRIFT_UP', severity: 'high' });
+
+        const ph_delta = Math.min(changeLimits.max_feed_ph_step, 0.2);
+        actions.push({
+            priority: 3,
+            type: 'warning',
+            icon: 'flask',
+            text: `<strong>[③3차]</strong> 급액 pH를 -${ph_delta.toFixed(1)} 낮추세요`
+        });
+
+        actions.push({
+            priority: 3,
+            type: 'danger',
+            icon: 'alert-circle',
+            text: '<strong>[경보]</strong> Fe, Mn 등 미량요소 잠금 위험! 원수 알칼리도를 확인하세요'
+        });
+
+        overallStatus = 'warning';
+    }
+
+    // [D] PH_DRIFT_DOWN (pH 하강)
+    if (drain_ph < setpoint.drain_ph[0] || d_drain_ph <= -warn_delta_ph) {
+        diagnosis.push({ code: 'PH_DRIFT_DOWN', severity: 'med' });
+
+        const ph_delta = Math.min(changeLimits.max_feed_ph_step, 0.2);
+        actions.push({
+            priority: 3,
+            type: 'warning',
+            icon: 'flask',
+            text: `<strong>[③3차]</strong> 급액 pH를 +${ph_delta.toFixed(1)} 높이세요`
+        });
+
+        if (overallStatus === 'healthy') overallStatus = 'info';
+    }
+
+    // 정상 범위 피드백
+    if (diagnosis.length === 0) {
+        actions.push({
+            priority: 0,
+            type: 'success',
+            icon: 'check-circle',
+            text: '<strong>✅ 모든 측정값이 목표 범위 내에 있습니다.</strong> 현재 관리 상태를 유지하세요.'
         });
     }
 
-    let overallStatus = 'healthy';
+    // 근권 온도 추가 분석
+    if (root_temp > 25) {
+        actions.push({
+            priority: 2,
+            type: 'warning',
+            icon: 'thermometer',
+            text: `<strong>[추가]</strong> 근권 온도(${root_temp}°C) 고온! 차광/쿨링 필요`
+        });
+    } else if (root_temp >= 18 && root_temp <= 23) {
+        actions.push({
+            priority: 0,
+            type: 'success',
+            icon: 'check-circle',
+            text: `근권 온도(${root_temp}°C) 최적 범위(18-23°C)`
+        });
+    }
 
-    // Add Standard Info with Scientific Basis
+    // Confidence score 계산
+    let confidence = 0.5;
+    if (drain_ec > 0) confidence += 0.2;
+    if (root_ec > 0) confidence += 0.2;
+    if (drain_ph > 0) confidence += 0.1;
+
+    console.log(`📊 진단 완료: ${diagnosis.length}개 이슈, ${actions.length}개 조치, confidence=${confidence.toFixed(2)}`);
+
+    // UI 업데이트
+    updateNutrientSolutionUI(
+        actions.sort((a, b) => a.priority - b.priority),
+        overallStatus,
+        setpoint.feed_ec[0], // targetEC (범위 시작값)
+        setpoint.feed_ph[0], // targetPH
+        cropId,
+        `${cropId.toUpperCase()} - ${stage} 단계`,
+        { vpd: 0, dewPoint: 0 } // 환경 지표는 기존 함수에서 처리
+    );
+
+    console.log('✅ 무토양 수경재배 진단 완료');
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// Legacy Fallback (DB 없는 작물용)
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+function analyzeNutrientSolutionLegacy(data) {
+    const { cropId, standardId, nutrient } = data;
+
+    console.log(`⚠️ Legacy 분석 모드: Crop=${cropId}`);
+
+    let targetData = nutrientPrescriptions[cropId]?.[standardId] ||
+        nutrientPrescriptions.default?.[standardId] ||
+        { name: '표준 양액', ec: 2.0, ph: 6.0, info: '기본 처방' };
+
+    const targetEC = targetData.ec;
+    const targetPH = targetData.ph;
+    const solutions = [];
+
     solutions.push({
         type: 'info',
         icon: 'book-open',
-        text: `<strong>[${standardName}]</strong> ${standardInfo}`
+        text: `<strong>[${targetData.name}]</strong> ${targetData.info || ''}`
     });
 
-    // 1. EC Analysis (Scientific Range Analysis)
-    const rootEC = nutrient.root.ec;
-    const inEC = nutrient.in.ec;
-    const drainEC = nutrient.drain.ec;
+    const rootEC = nutrient.root.ec || 0;
+    const rootPH = nutrient.root.ph || 0;
 
-    if (rootEC > 0) {
-        // EC Tolerance based on crop sensitivity (General rule: +/- 0.5 is critical)
-        if (rootEC > targetEC + 0.5) {
-            solutions.push({
-                type: 'warning',
-                icon: 'alert-triangle',
-                text: `근권 EC(${rootEC}dS/m)가 목표치(${targetEC}dS/m)보다 높습니다. 염류 집적 위험이 있습니다. 급액 EC를 0.2~0.5dS/m 낮추거나 배액율을 30% 이상으로 높여 세척 배양하세요.`
-            });
-            overallStatus = 'warning';
-        } else if (rootEC < targetEC - 0.3) {
-            solutions.push({
-                type: 'info',
-                icon: 'flask-conical',
-                text: `근권 EC(${rootEC}dS/m)가 목표치(${targetEC}dS/m)보다 낮습니다. 생육 저하가 우려됩니다. 급액 EC를 0.2dS/m 단계적으로 상향 조정하세요.`
-            });
-        } else {
-            solutions.push({
-                type: 'success',
-                icon: 'check-circle',
-                text: `근권 EC(${rootEC}dS/m)가 적정 범위(±0.3dS/m) 내에서 안정적으로 관리되고 있습니다.`
-            });
-        }
+    if (rootEC > targetEC + 0.5) {
+        solutions.push({
+            type: 'warning',
+            icon: 'alert-triangle',
+            text: `근권 EC(${rootEC}dS/m)가 높습니다. 배액률을 높이세요.`
+        });
+    } else if (rootEC > 0) {
+        solutions.push({ type: 'success', icon: 'check-circle', text: `근권 EC(${rootEC}dS/m) 정상` });
     }
 
-    // 2. pH Analysis
-    const rootPH = nutrient.root.ph;
-
-    if (rootPH > 0) {
-        if (rootPH > targetPH + 0.5) {
-            solutions.push({
-                type: 'warning',
-                icon: 'alert-circle',
-                text: `근권 pH(${rootPH})가 높습니다. Fe, Mn, B 등 미량원소 결핍이 발생할 수 있습니다. 질산/인산 등을 이용하여 급액 pH를 하향 조정하세요.`
-            });
-            overallStatus = 'warning';
-        } else if (rootPH < targetPH - 0.5) {
-            solutions.push({
-                type: 'danger',
-                icon: 'skull',
-                text: `근권 pH(${rootPH})가 낮습니다. 뿌리 손상 및 Ca, Mg 결핍 위험이 큽니다. 수산화칼륨 등을 이용하여 급액 pH를 상향 조정하세요.`
-            });
-            overallStatus = 'danger';
-        } else {
-            solutions.push({
-                type: 'success',
-                icon: 'check-circle',
-                text: `근권 pH(${rootPH})가 양분 흡수에 최적화된 범위 내에 있습니다.`
-            });
-        }
+    if (rootPH > targetPH + 0.5) {
+        solutions.push({
+            type: 'warning',
+            icon: 'alert-circle',
+            text: `근권 pH(${rootPH}) 높음. 미량요소 결핍 위험`
+        });
+    } else if (rootPH > 0) {
+        solutions.push({ type: 'success', icon: 'check-circle', text: `근권 pH(${rootPH}) 정상` });
     }
 
-    // 3. Root Temperature Analysis
-    const rootTemp = nutrient.root.temp;
-
-    if (rootTemp > 0) {
-        if (rootTemp > 25) {
-            solutions.push({
-                type: 'warning',
-                icon: 'thermometer',
-                text: `근권 온도(${rootTemp}°C)가 고온 한계선을 초과했습니다. 용존산소량(DO) 감소로 인한 뿌리 활력 저하가 우려됩니다. 차광 및 쿨링 시스템을 가동하세요.`
-            });
-            overallStatus = 'warning';
-        } else if (rootTemp < 15) {
-            solutions.push({
-                type: 'info',
-                icon: 'thermometer-snowflake',
-                text: `근권 온도(${rootTemp}°C)가 저온 상태입니다. 인(P) 흡수 불량이 발생할 수 있습니다. 근권 난방이 필요합니다.`
-            });
-        } else {
-            solutions.push({
-                type: 'success',
-                icon: 'check-circle',
-                text: `근권 온도(${rootTemp}°C)가 적정 생육 범위(18-23°C)입니다.`
-            });
-        }
-    }
-
-    // 4. Drain EC Analysis (Absorption Pattern)
-    if (drainEC > 0 && inEC > 0) {
-        const ecDiff = drainEC - inEC;
-        if (ecDiff > 0.3) {
-            solutions.push({
-                type: 'info',
-                icon: 'activity',
-                text: `배액 EC가 급액보다 높습니다(농축). 작물의 수분 흡수가 양분 흡수보다 활발합니다. 증산량이 많으므로 과습 및 고온을 주의하세요.`
-            });
-        } else if (ecDiff < -0.3) {
-            solutions.push({
-                type: 'info',
-                icon: 'droplet',
-                text: '배액 EC가 급액보다 낮습니다. 작물의 양분 흡수가 매우 활발합니다. 급액 농도를 유지하거나 약간 높이세요.'
-            });
-        }
-    }
-
-    // --- INTEGRATED GROWTH ANALYSIS (Environment + Nutrient) ---
-    const integrated = analyzeIntegratedGrowth(data);
-    solutions.push(...integrated.solutions);
-
-    // Update UI
-    console.log('🎨 프리미엄 UI 업데이트 시작:', { solutions, overallStatus, targetEC, targetPH });
-    updateNutrientSolutionUI(solutions, overallStatus, targetEC, targetPH, nutrientCrop, standardName, integrated.metrics);
-    console.log('✅ 프리미엄 양액 분석 UI 업데이트 완료');
+    updateNutrientSolutionUI(solutions, 'info', targetEC, targetPH, cropId, targetData.name, null);
+    console.log('✅ Legacy 분석 완료');
 }
 
 // Integrated Growth Analysis Algorithm
